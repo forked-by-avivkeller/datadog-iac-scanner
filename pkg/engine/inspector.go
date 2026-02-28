@@ -818,9 +818,29 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) { //nolint:go
 	case *hclsyntax.ObjectConsKeyExpr:
 		return expressionToAST(e.UnwrapExpression())
 
+	case *hclsyntax.IndexExpr:
+		collV, err1 := expressionToAST(e.Collection)
+		keyV, err2 := expressionToAST(e.Key)
+		if err1 != nil || err2 != nil {
+			return ast.String("__UNRESOLVED__"), nil
+		}
+		collStr := astValueToSimpleString(collV)
+		keyStr := astValueToSimpleString(keyV)
+		return ast.String(collStr + "[" + keyStr + "]"), nil
+
 	default:
 		return ast.String("__UNSUPPORTED_EXPR__"), nil
 	}
+}
+
+func astValueToSimpleString(v ast.Value) string {
+	if v == nil {
+		return "__UNRESOLVED__"
+	}
+	if s, ok := v.(ast.String); ok {
+		return string(s)
+	}
+	return v.String()
 }
 
 // Converts HCL literal values to ast.Value

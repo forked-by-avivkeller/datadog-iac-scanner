@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
@@ -54,4 +55,51 @@ func TestEngine_BuildString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExpToString_IndexExpr(t *testing.T) {
+	expr, diags := hclsyntax.ParseExpression([]byte("var.list[var.i]"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		t.Fatalf("parse failed: %v", diags)
+	}
+	indexExpr, ok := expr.(*hclsyntax.IndexExpr)
+	if !ok {
+		t.Fatalf("expected *hclsyntax.IndexExpr, got %T", expr)
+	}
+
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("via ExpToString", func(t *testing.T) {
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString(IndexExpr): %v", err)
+		}
+		if want := "var.list[var.i]"; got != want {
+			t.Errorf("ExpToString(IndexExpr) = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("via indexExprToString", func(t *testing.T) {
+		got, err := e.indexExprToString(ctx, indexExpr)
+		if err != nil {
+			t.Fatalf("indexExprToString: %v", err)
+		}
+		if want := "var.list[var.i]"; got != want {
+			t.Errorf("indexExprToString() = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestExpToString_IndexExpr_edgeCases(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("nil IndexExpr", func(t *testing.T) {
+		var nilIndex *hclsyntax.IndexExpr
+		_, err := e.indexExprToString(ctx, nilIndex)
+		if err == nil {
+			t.Error("indexExprToString(nil) should return error")
+		}
+	})
 }
