@@ -536,7 +536,8 @@ martin2:
 
 func TestParser_GetResolvedFiles(t *testing.T) {
 	type fields struct {
-		resolvedFiles map[string]model.ResolvedFile
+		resolvedFiles map[string]map[string]model.ResolvedFile
+		filename      string
 	}
 	tests := []struct {
 		name   string
@@ -546,11 +547,14 @@ func TestParser_GetResolvedFiles(t *testing.T) {
 		{
 			name: "test get resolved files",
 			fields: fields{
-				resolvedFiles: map[string]model.ResolvedFile{
+				resolvedFiles: map[string]map[string]model.ResolvedFile{
 					"test": {
-						Content: []byte(`1`),
+						"test": {
+							Content: []byte(`1`),
+						},
 					},
 				},
+				filename: "test",
 			},
 			want: map[string]model.ResolvedFile{
 				"test": {
@@ -564,7 +568,7 @@ func TestParser_GetResolvedFiles(t *testing.T) {
 			p := &Parser{
 				resolvedFiles: tt.fields.resolvedFiles,
 			}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
+			if got := p.GetResolvedFiles(tt.fields.filename); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
 			}
 		})

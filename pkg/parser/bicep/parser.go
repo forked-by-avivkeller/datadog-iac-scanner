@@ -880,6 +880,6 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, _ string, _ bo
 }
 
 // GetResolvedFiles returns the list of files that are resolved
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
+func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
 	return make(map[string]model.ResolvedFile)
 }

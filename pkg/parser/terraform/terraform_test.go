@@ -418,7 +418,7 @@ func TestParser_GetResolvedFiles(t *testing.T) {
 				convertFunc:  tt.fields.convertFunc,
 				numOfRetries: tt.fields.numOfRetries,
 			}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
+			if got := p.GetResolvedFiles(tt.name); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
 			}
 		})

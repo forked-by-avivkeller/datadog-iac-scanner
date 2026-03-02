@@ -226,6 +226,6 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 }
 
 // GetResolvedFiles returns the resolved files
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
+func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
 	return make(map[string]model.ResolvedFile)
 }

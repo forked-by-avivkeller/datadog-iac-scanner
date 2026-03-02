@@ -20,7 +20,7 @@ import (
 type Parser struct {
 	shouldIdent     bool
 	shouldIdentMu   sync.RWMutex
-	resolvedFiles   map[string]model.ResolvedFile
+	resolvedFiles   map[string]map[string]model.ResolvedFile
 	resolvedFilesMu sync.RWMutex
 }
 
@@ -33,7 +33,11 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename strin
 	resolved := res.Resolve(ctx, fileContent, filename, 0, maxResolverDepth, resolvedFilesCache, resolveReferences)
 
 	p.resolvedFilesMu.Lock()
-	p.resolvedFiles = res.ResolvedFiles
+	if p.resolvedFiles == nil {
+		p.resolvedFiles = make(map[string]map[string]model.ResolvedFile)
+	}
+
+	p.resolvedFiles[filename] = res.ResolvedFiles
 	p.resolvedFilesMu.Unlock()
 
 	if len(res.ResolvedFiles) == 0 {
@@ -114,10 +118,10 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 }
 
 // GetResolvedFiles returns resolved files
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
+func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
 	p.resolvedFilesMu.RLock()
 	defer p.resolvedFilesMu.RUnlock()
 	resolvedFiles := make(map[string]model.ResolvedFile, len(p.resolvedFiles))
-	maps.Copy(resolvedFiles, p.resolvedFiles)
+	maps.Copy(resolvedFiles, p.resolvedFiles[filename])
 	return resolvedFiles
 }

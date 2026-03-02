@@ -53,7 +53,7 @@ func TestParser_GetResolvedFiles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
+			if got := p.GetResolvedFiles(tt.name); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
 			}
 		})

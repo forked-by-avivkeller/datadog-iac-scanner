@@ -128,7 +128,7 @@ func (p *Parser) GetCommentToken() string {
 }
 
 // GetResolvedFiles returns resolved files
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
+func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
 	return make(map[string]model.ResolvedFile)
 }
 

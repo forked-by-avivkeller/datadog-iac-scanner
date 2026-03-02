@@ -25,7 +25,7 @@ type kindParser interface {
 	Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error)
 	Resolve(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) ([]byte, error)
 	StringifyContent(content []byte) (string, error)
-	GetResolvedFiles() map[string]model.ResolvedFile
+	GetResolvedFiles(filename string) map[string]model.ResolvedFile
 }
 
 // Builder is a representation of parsers that will be construct
@@ -162,7 +162,7 @@ func (c *Parser) Parse(
 			Content:       cont,
 			IgnoreLines:   igLines,
 			CountLines:    bytes.Count(resolved, []byte{'\n'}) + 1,
-			ResolvedFiles: c.parsers.GetResolvedFiles(),
+			ResolvedFiles: c.parsers.GetResolvedFiles(filePath),
 			IsMinified:    isMinified,
 		}, nil
 	}

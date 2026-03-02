@@ -126,7 +126,8 @@ func TestJSON_StringifyContent(t *testing.T) {
 func TestParser_GetResolvedFiles(t *testing.T) {
 	type fields struct {
 		shouldIdent   bool
-		resolvedFiles map[string]model.ResolvedFile
+		resolvedFiles map[string]map[string]model.ResolvedFile
+		filename      string
 	}
 	tests := []struct {
 		name   string
@@ -137,11 +138,14 @@ func TestParser_GetResolvedFiles(t *testing.T) {
 			name: "test get resolved files",
 			fields: fields{
 				shouldIdent: true,
-				resolvedFiles: map[string]model.ResolvedFile{
+				resolvedFiles: map[string]map[string]model.ResolvedFile{
 					"test.json": {
-						Content: []byte(`{"key":"value"}`),
+						"test.json": {
+							Content: []byte(`{"key":"value"}`),
+						},
 					},
 				},
+				filename: "test.json",
 			},
 			want: map[string]model.ResolvedFile{
 				"test.json": {
@@ -156,7 +160,7 @@ func TestParser_GetResolvedFiles(t *testing.T) {
 				shouldIdent:   tt.fields.shouldIdent,
 				resolvedFiles: tt.fields.resolvedFiles,
 			}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
+			if got := p.GetResolvedFiles(tt.fields.filename); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
 			}
 		})

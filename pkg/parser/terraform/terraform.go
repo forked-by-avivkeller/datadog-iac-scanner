@@ -7,6 +7,7 @@ package terraform
 
 import (
 	"context"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -70,8 +71,6 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename strin
 	vars := getDataSourcePolicy(ctx, filepath.Dir(filename), inputVars)
 
 	// Store variables per filename to avoid race conditions between different files
-	// Use base filename to ensure consistency between Resolve() and Parse() calls
-	baseFilename := filepath.Base(filename)
 	p.inputVarsMu.Lock()
 	p.inputVariables[filename] = vars
 	p.inputVarsMu.Unlock()
@@ -251,6 +250,6 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 }
 
 // GetResolvedFiles returns the files that are resolved
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
+func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
 	return make(map[string]model.ResolvedFile)
 }
