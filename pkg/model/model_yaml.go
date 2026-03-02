@@ -52,7 +52,7 @@ func unmarshalWithDepth(ctx context.Context, val *yaml.Node, visited map[*yaml.N
 	visited[val] = true
 	defer func() { delete(visited, val) }()
 	tmp := make(map[string]interface{})
-	ignoreCommentsYAML(val)
+	ignoreCommentsYAML(ctx, val)
 
 	// if Yaml Node is an Array than we are working with ansible
 	// which need to be placed inside "playbooks"

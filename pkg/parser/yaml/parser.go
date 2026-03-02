@@ -47,7 +47,8 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename strin
 
 // Parse parses yaml/yml file and returns it as a Document
 func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error) {
-	model.NewIgnore.Reset()
+	// Create a context-local Ignore instance to avoid race conditions
+	ctx = model.WithIgnore(ctx)
 	var documents []model.Document
 
 	// Parse all documents as nodes
@@ -77,7 +78,8 @@ func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte)
 		return nil, []int{}, errors.New("no documents found in yaml file")
 	}
 
-	linesToIgnore := model.NewIgnore.GetLines()
+	ignore := ctx.Value(model.ContextKeyIgnore{}).(*model.Ignore)
+	linesToIgnore := ignore.GetLines()
 
 	// UnmarshalYAML already adds line tracking, so we can use documents directly
 	return convertKeysToString(addExtraInfo(ctx, documents, filePath)), linesToIgnore, nil
