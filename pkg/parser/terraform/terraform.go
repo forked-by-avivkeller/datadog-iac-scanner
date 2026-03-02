@@ -213,8 +213,10 @@ func (p *Parser) Parse(ctx context.Context, path string, content []byte) ([]mode
 		inputVars = make(converter.VariableMap)
 	}
 	p.inputVarsMu.RUnlock()
+	inputVarsCopy := make(converter.VariableMap, len(inputVars))
+	maps.Copy(inputVarsCopy, inputVars)
 
-	fc, parseErr := p.convertFunc(ctx, file, inputVars)
+	fc, parseErr := p.convertFunc(ctx, file, inputVarsCopy)
 	json, err := addExtraInfo(ctx, []model.Document{fc}, path)
 	if err != nil {
 		return json, []int{}, errors.Wrap(err, "failed terraform parse")
