@@ -73,7 +73,7 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename strin
 	// Use base filename to ensure consistency between Resolve() and Parse() calls
 	baseFilename := filepath.Base(filename)
 	p.inputVarsMu.Lock()
-	p.inputVariables[baseFilename] = vars
+	p.inputVariables[filename] = vars
 	p.inputVarsMu.Unlock()
 
 	return fileContent, nil
@@ -207,10 +207,8 @@ func (p *Parser) Parse(ctx context.Context, path string, content []byte) ([]mode
 
 	linesToIgnore := comment.GetIgnoreLines(ignore, file.Body.(*hclsyntax.Body))
 
-	// Use base filename to ensure consistency between Resolve() and Parse() calls
-	baseFilename := filepath.Base(path)
 	p.inputVarsMu.RLock()
-	inputVars, ok := p.inputVariables[baseFilename]
+	inputVars, ok := p.inputVariables[path]
 	if !ok {
 		inputVars = make(converter.VariableMap)
 	}

@@ -161,9 +161,10 @@ func Test_Parentheses_Expr(t *testing.T) {
 	ctx := context.Background()
 	parser := NewDefault()
 	// Call Resolve first to set up input variables
-	_, err := parser.Resolve(ctx, []byte(parentheses), filepath.FromSlash("../../../test/fixtures/test-tf-parentheses/parentheses.tf"), false, 0)
+	fullPath := filepath.FromSlash("../../../test/fixtures/test-tf-parentheses/parentheses.tf")
+	_, err := parser.Resolve(ctx, []byte(parentheses), fullPath, false, 0)
 	require.NoError(t, err)
-	document, _, err := parser.Parse(ctx, "parentheses.tf", []byte(parentheses))
+	document, _, err := parser.Parse(ctx, fullPath, []byte(parentheses))
 	require.NoError(t, err)
 	require.Len(t, document, 1)
 	require.Contains(t, document[0], "data")
