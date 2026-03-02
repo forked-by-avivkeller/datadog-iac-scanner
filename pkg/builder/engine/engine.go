@@ -52,6 +52,8 @@ func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (st
 	case *hclsyntax.ScopeTraversalExpr:
 		items := evaluateScopeTraversalExpr(t.Traversal)
 		return strings.Join(items, "."), nil
+	case *hclsyntax.IndexExpr:
+		return e.indexExprToString(ctx, t)
 	}
 	err := fmt.Errorf("can't convert expression %T to string", expr)
 	contextLogger.Error().Msg(err.Error())
@@ -75,6 +77,21 @@ func (e *Engine) buildString(ctx context.Context, parts []hclsyntax.Expression) 
 	builder = nil
 
 	return s, nil
+}
+
+func (e *Engine) indexExprToString(ctx context.Context, t *hclsyntax.IndexExpr) (string, error) {
+	if t == nil || t.Collection == nil || t.Key == nil {
+		return "", fmt.Errorf("invalid IndexExpr: nil collection or key")
+	}
+	coll, err := e.ExpToString(ctx, t.Collection)
+	if err != nil {
+		return "", err
+	}
+	key, err := e.ExpToString(ctx, t.Key)
+	if err != nil {
+		return "", err
+	}
+	return coll + "[" + key + "]", nil
 }
 
 func evaluateScopeTraversalExpr(t hcl.Traversal) []string {
