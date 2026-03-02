@@ -91,6 +91,81 @@ func TestExpToString_IndexExpr(t *testing.T) {
 	})
 }
 
+func TestExpToString_RelativeTraversalExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("relative_traversal_after_index", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("list[var.i].name"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "list[var.i].name"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("relative_traversal_multi_step", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("list[var.i].a.b"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "list[var.i].a.b"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("relative_traversal_with_index_step", func(t *testing.T) {
+		// e.g. list[var.i][0] -> RelativeTraversalExpr(IndexExpr, [TraverseIndex(0)])
+		expr, diags := hclsyntax.ParseExpression([]byte("list[var.i][0]"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "list[var.i][0]"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("unsupported_source_propagates_error", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("tostring(var.x).attr"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		_, err := e.ExpToString(ctx, expr)
+		if err == nil {
+			t.Error("ExpToString should return error for unsupported source type")
+		}
+	})
+}
+
 func TestExpToString_IndexExpr_edgeCases(t *testing.T) {
 	e := &Engine{}
 	ctx := context.Background()

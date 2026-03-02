@@ -51,7 +51,10 @@ type converter struct {
 	inputVarsMu sync.RWMutex
 }
 
-const kicsLinesKey = "_kics_"
+const (
+	kicsLinesKey          = "_kics_"
+	ctyFriendlyNameString = "string"
+)
 
 func (c *converter) rangeSource(r hcl.Range) string {
 	return string(c.bytes[r.Start.Byte:r.End.Byte])
@@ -225,6 +228,17 @@ func (c *converter) convertExpression(expr hclsyntax.Expression) (interface{}, e
 		return c.objectConsExpr(value)
 	case *hclsyntax.FunctionCallExpr:
 		return c.evalFunction(expr)
+	case *hclsyntax.RelativeTraversalExpr:
+		c.inputVarsMu.RLock()
+		expressionEvaluated, _ := expr.Value(&hcl.EvalContext{
+			Variables: c.inputVars,
+			Functions: functions.TerraformFuncs,
+		})
+		c.inputVarsMu.RUnlock()
+		if !checkDynamicKnownTypes(expressionEvaluated) {
+			return ctyjson.SimpleJSONValue{Value: expressionEvaluated}, nil
+		}
+		return c.wrapExpr(expr)
 	case *hclsyntax.ConditionalExpr:
 		c.inputVarsMu.RLock()
 		expressionEvaluated, err := expr.Value(&hcl.EvalContext{
@@ -352,6 +366,17 @@ func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error)
 		return c.convertTemplateFor(v.Tuple.(*hclsyntax.ForExpr))
 	case *hclsyntax.ParenthesesExpr:
 		return c.convertStringPart(v.Expression)
+	case *hclsyntax.RelativeTraversalExpr:
+		c.inputVarsMu.RLock()
+		valueConverted, _ := expr.Value(&hcl.EvalContext{
+			Variables: c.inputVars,
+			Functions: functions.TerraformFuncs,
+		})
+		c.inputVarsMu.RUnlock()
+		if valueConverted.Type().FriendlyName() == ctyFriendlyNameString {
+			return valueConverted.AsString(), nil
+		}
+		return c.wrapExpr(expr)
 	default:
 		// try to evaluate with variables
 		c.inputVarsMu.RLock()
@@ -359,7 +384,7 @@ func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error)
 			Variables: c.inputVars,
 		})
 		c.inputVarsMu.RUnlock()
-		if valueConverted.Type().FriendlyName() == "string" {
+		if valueConverted.Type().FriendlyName() == ctyFriendlyNameString {
 			return valueConverted.AsString(), nil
 		}
 		// treating as an embedded expression

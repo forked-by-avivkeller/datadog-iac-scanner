@@ -47,6 +47,7 @@ const (
 	DefaultQueryDescriptionID   = "Undefined"
 	DefaultQueryURI             = "https://github.com/DataDog/datadog-iac-scanner/"
 	DefaultIssueType            = model.IssueTypeIncorrectValue
+	unresolvedPlaceholder       = "__UNRESOLVED__"
 
 	regoQuery = `result = data.Cx.CxPolicy`
 )
@@ -789,7 +790,7 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) { //nolint:go
 		for _, item := range e.Exprs {
 			v, err := expressionToAST(item)
 			if err != nil {
-				v = ast.String("__UNRESOLVED__")
+				v = ast.String(unresolvedPlaceholder)
 			}
 			terms = append(terms, ast.NewTerm(v))
 		}
@@ -809,7 +810,7 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) { //nolint:go
 			}
 			valVal, err := expressionToAST(item.ValueExpr)
 			if err != nil {
-				valVal = ast.String("__UNRESOLVED__")
+				valVal = ast.String(unresolvedPlaceholder)
 			}
 			obj.Insert(ast.NewTerm(strKey), ast.NewTerm(valVal))
 		}
@@ -822,11 +823,32 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) { //nolint:go
 		collV, err1 := expressionToAST(e.Collection)
 		keyV, err2 := expressionToAST(e.Key)
 		if err1 != nil || err2 != nil {
-			return ast.String("__UNRESOLVED__"), nil
+			return ast.String(unresolvedPlaceholder), nil
 		}
 		collStr := astValueToSimpleString(collV)
 		keyStr := astValueToSimpleString(keyV)
 		return ast.String(collStr + "[" + keyStr + "]"), nil
+
+	case *hclsyntax.RelativeTraversalExpr:
+		sourceVal, err := expressionToAST(e.Source)
+		if err != nil {
+			return ast.String(unresolvedPlaceholder), nil
+		}
+		sourceStr := astValueToSimpleString(sourceVal)
+		for _, step := range e.Traversal {
+			switch s := step.(type) {
+			case hcl.TraverseAttr:
+				sourceStr += "." + s.Name
+			case hcl.TraverseIndex:
+				switch s.Key.Type() {
+				case cty.Number:
+					sourceStr += "[" + s.Key.AsBigFloat().String() + "]"
+				case cty.String:
+					sourceStr += "[" + s.Key.AsString() + "]"
+				}
+			}
+		}
+		return ast.String(sourceStr), nil
 
 	default:
 		return ast.String("__UNSUPPORTED_EXPR__"), nil
@@ -835,7 +857,7 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) { //nolint:go
 
 func astValueToSimpleString(v ast.Value) string {
 	if v == nil {
-		return "__UNRESOLVED__"
+		return unresolvedPlaceholder
 	}
 	if s, ok := v.(ast.String); ok {
 		return string(s)

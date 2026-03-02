@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -401,6 +403,99 @@ func TestDetectModuleSourceTypeWithScope(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolveExpr_RelativeTraversalExpr(t *testing.T) {
+	t.Run("function_call_source_with_traversal", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`format("%s", "value").suffix`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "value.suffix"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("unresolved_source_short_circuits", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte("tostring(var.x).attr"),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		if result != "__UNRESOLVED__" {
+			t.Errorf("resolveExpr = %q, want %q", result, "__UNRESOLVED__")
+		}
+	})
+
+	t.Run("in_template_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`"prefix-${format("%s", "val").suffix}"`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "prefix-val.suffix"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("multi_step_traversal", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`format("%s", "base").a.b`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "base.a.b"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("traversal_with_index_step", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`format("%s", "base")[0].name`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "base[0].name"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
 }
 
 func TestGetProviderFromResourceType(t *testing.T) {

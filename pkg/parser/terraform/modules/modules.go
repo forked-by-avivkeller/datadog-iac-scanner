@@ -62,11 +62,14 @@ func isTerraformFile(filePath string) bool {
 	return strings.HasSuffix(strings.ToLower(filePath), ".tf")
 }
 
-const stringLocal = "local"
-const stringUnknown = "unknown"
-const stringPublic = "public"
-const stringRegistry = "registry"
-const stringPrivate = "private"
+const (
+	stringLocal           = "local"
+	stringUnknown         = "unknown"
+	stringPublic          = "public"
+	stringRegistry        = "registry"
+	stringPrivate         = "private"
+	unresolvedPlaceholder = "__UNRESOLVED__"
+)
 
 // nolint:gocyclo
 // ParseTerraformModules parses HCL content and extracts module source/version, resolving locals/variables if possible.
@@ -229,6 +232,8 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 				}
 			case *hclsyntax.ScopeTraversalExpr:
 				result.WriteString(resolveScopeTraversal(p, locals, vars))
+			case *hclsyntax.RelativeTraversalExpr:
+				result.WriteString(resolveExpr(p, locals, vars))
 			default:
 				result.WriteString("${UNSUPPORTED_TEMPLATE_EXPR}")
 			}
@@ -241,15 +246,43 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 	case *hclsyntax.FunctionCallExpr:
 		return resolveFunctionCall(e, locals, vars)
 
+	case *hclsyntax.RelativeTraversalExpr:
+		return resolveRelativeTraversalExpr(e, locals, vars)
+
 	default:
-		val, diag := expr.Value(nil)
-		if !diag.HasErrors() &&
-			val.Type().Equals(cty.String) &&
-			!val.IsNull() {
-			return val.AsString()
-		}
-		return "__UNRESOLVED__"
+		return resolveExprDefault(expr)
 	}
+}
+
+func resolveRelativeTraversalExpr(e *hclsyntax.RelativeTraversalExpr, locals, vars map[string]string) string {
+	sourceStr := resolveExpr(e.Source, locals, vars)
+	if strings.HasPrefix(sourceStr, "__") {
+		return unresolvedPlaceholder
+	}
+	for _, step := range e.Traversal {
+		switch s := step.(type) {
+		case hcl.TraverseAttr:
+			sourceStr += "." + s.Name
+		case hcl.TraverseIndex:
+			switch s.Key.Type() {
+			case cty.Number:
+				sourceStr += "[" + s.Key.AsBigFloat().String() + "]"
+			case cty.String:
+				sourceStr += "[" + s.Key.AsString() + "]"
+			}
+		}
+	}
+	return sourceStr
+}
+
+func resolveExprDefault(expr hclsyntax.Expression) string {
+	val, diag := expr.Value(nil)
+	if !diag.HasErrors() &&
+		val.Type().Equals(cty.String) &&
+		!val.IsNull() {
+		return val.AsString()
+	}
+	return unresolvedPlaceholder
 }
 
 func resolveScopeTraversal(expr *hclsyntax.ScopeTraversalExpr, locals, vars map[string]string) string {
