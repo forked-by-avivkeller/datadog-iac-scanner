@@ -54,6 +54,15 @@ func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (st
 		return strings.Join(items, "."), nil
 	case *hclsyntax.IndexExpr:
 		return e.indexExprToString(ctx, t)
+	case *hclsyntax.RelativeTraversalExpr:
+		sourceStr, err := e.ExpToString(ctx, t.Source)
+		if err != nil {
+			return "", err
+		}
+		if len(t.Traversal) == 0 {
+			return sourceStr, nil
+		}
+		return sourceStr + relativeTraversalToString(t.Traversal), nil
 	}
 	err := fmt.Errorf("can't convert expression %T to string", expr)
 	contextLogger.Error().Msg(err.Error())
@@ -112,4 +121,27 @@ func evaluateScopeTraversalExpr(t hcl.Traversal) []string {
 		}
 	}
 	return items
+}
+
+// relativeTraversalToString formats a relative traversal (e.g. .attr or [0]) so that
+// TraverseAttr becomes ".name" and TraverseIndex becomes "[key]".
+func relativeTraversalToString(t hcl.Traversal) string {
+	var b strings.Builder
+	for _, step := range t {
+		switch s := step.(type) {
+		case hcl.TraverseAttr:
+			b.WriteString(".")
+			b.WriteString(s.Name)
+		case hcl.TraverseIndex:
+			b.WriteString("[")
+			switch s.Key.Type() {
+			case cty.Number:
+				b.WriteString(s.Key.AsBigFloat().String())
+			case cty.String:
+				b.WriteString(s.Key.AsString())
+			}
+			b.WriteString("]")
+		}
+	}
+	return b.String()
 }

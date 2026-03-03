@@ -310,6 +310,81 @@ block "label_one" {
 	}
 }
 
+func TestRelativeTraversalExpr(t *testing.T) {
+	t.Run("jsondecode_with_traversal_resolves", func(t *testing.T) {
+		input := `
+block "test" {
+  host = jsondecode(var.json_data).host
+}
+`
+		ctx := context.Background()
+		file, diags := hclsyntax.ParseConfig([]byte(input), "testFileName", hcl.Pos{Byte: 0, Line: 1, Column: 1})
+		require.False(t, diags.HasErrors(), "parse error: %v", diags)
+
+		body, err := DefaultConverted(ctx, file, VariableMap{
+			"var": cty.ObjectVal(map[string]cty.Value{
+				"json_data": cty.StringVal(`{"host":"db.example.com"}`),
+			}),
+		})
+		require.NoError(t, err)
+
+		blockDoc := body["block"].(model.Document)["test"].(model.Document)
+		gotValue := ""
+		if token, ok := blockDoc["host"].(ctyjson.SimpleJSONValue); ok {
+			gotValue = token.Value.AsString()
+		} else if s, ok := blockDoc["host"].(string); ok {
+			gotValue = s
+		}
+		require.Equal(t, "db.example.com", gotValue)
+	})
+
+	t.Run("relative_traversal_without_vars_wraps_expression", func(t *testing.T) {
+		input := `
+block "test" {
+  host = jsondecode(var.json_data).host
+}
+`
+		ctx := context.Background()
+		file, diags := hclsyntax.ParseConfig([]byte(input), "testFileName", hcl.Pos{Byte: 0, Line: 1, Column: 1})
+		require.False(t, diags.HasErrors(), "parse error: %v", diags)
+
+		body, err := DefaultConverted(ctx, file, VariableMap{})
+		require.NoError(t, err)
+
+		blockDoc := body["block"].(model.Document)["test"].(model.Document)
+		gotValue := fmt.Sprintf("%v", blockDoc["host"])
+		// Without variables, the expression can't be fully evaluated and gets wrapped
+		require.Contains(t, gotValue, "jsondecode")
+	})
+
+	t.Run("relative_traversal_in_template", func(t *testing.T) {
+		input := `
+block "test" {
+  host = "prefix-${jsondecode(var.json_data).host}"
+}
+`
+		ctx := context.Background()
+		file, diags := hclsyntax.ParseConfig([]byte(input), "testFileName", hcl.Pos{Byte: 0, Line: 1, Column: 1})
+		require.False(t, diags.HasErrors(), "parse error: %v", diags)
+
+		body, err := DefaultConverted(ctx, file, VariableMap{
+			"var": cty.ObjectVal(map[string]cty.Value{
+				"json_data": cty.StringVal(`{"host":"db.example.com"}`),
+			}),
+		})
+		require.NoError(t, err)
+
+		blockDoc := body["block"].(model.Document)["test"].(model.Document)
+		gotValue := ""
+		if token, ok := blockDoc["host"].(ctyjson.SimpleJSONValue); ok {
+			gotValue = token.Value.AsString()
+		} else if s, ok := blockDoc["host"].(string); ok {
+			gotValue = s
+		}
+		require.Equal(t, "prefix-db.example.com", gotValue)
+	})
+}
+
 func TestEvalFunction(t *testing.T) { //nolint
 	type funcTest struct {
 		name    string

@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/featureflags"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/stretchr/testify/assert"
 
@@ -598,6 +600,72 @@ func (m *mockSource) GetQueryLibrary(ctx context.Context, platform string) (sour
 		LibraryCode:      embeddedLibrary,
 		LibraryInputData: "{}",
 	}, errGettingEmbeddedLibrary
+}
+
+func TestExpressionToAST_RelativeTraversalExpr(t *testing.T) {
+	t.Run("relative_traversal_after_index", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("list[var.i].name"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+
+		got := val.String()
+		// IndexExpr resolves: Collection RootName="list", Key RootName="var" → "list[var]"
+		// Relative traversal appends ".name"
+		want := `"list[var].name"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+
+	t.Run("relative_traversal_multi_step", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("list[var.i].a.b"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.RelativeTraversalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+
+		got := val.String()
+		want := `"list[var].a.b"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+
+	t.Run("unsupported_source_returns_gracefully", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("tostring(var.x).attr"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST should not return error, got: %v", err)
+		}
+
+		got := val.String()
+		// FunctionCallExpr is unsupported → source is "__UNSUPPORTED_EXPR__"
+		// Traversal appends ".attr"
+		want := `"__UNSUPPORTED_EXPR__.attr"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
 }
 
 func TestInspector_checkComment(t *testing.T) {
