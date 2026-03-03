@@ -560,6 +560,38 @@ func TestResolveExpr_TemplateWrapExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_IndexExpr(t *testing.T) {
+	t.Run("main_switch_resolves_collection_and_key", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("var.list[var.i]"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.IndexExpr); !ok {
+			t.Fatalf("expected *hclsyntax.IndexExpr, got %T", expr)
+		}
+
+		vars := map[string]string{"list": "items", "i": "0"}
+		result := resolveExpr(expr, map[string]string{}, vars)
+		want := "items[0]"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("in_template_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`"${var.map[var.k]}"`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{"map": "m", "k": "key"})
+		want := "m[key]"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
 func TestResolveExpr_ConditionalExpr(t *testing.T) {
 	t.Run("main_switch_resolves_condition_true_false", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte(`var.enabled ? var.yes : var.no`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
