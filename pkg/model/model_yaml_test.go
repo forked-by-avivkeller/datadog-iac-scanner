@@ -448,6 +448,93 @@ var tests = []struct {
 		  }
 		  `,
 	},
+	{
+		name:    "test scalar integer formats (hex, octal, binary, underscores)",
+		m:       &Document{},
+		wantErr: false,
+		args: args{
+			value: &yaml.Node{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "hex_int", Line: 1},
+					{Kind: yaml.ScalarNode, Tag: "!!int", Value: "0x1A", Line: 1},
+					{Kind: yaml.ScalarNode, Value: "octal_int", Line: 2},
+					{Kind: yaml.ScalarNode, Tag: "!!int", Value: "0o755", Line: 2},
+					{Kind: yaml.ScalarNode, Value: "binary_int", Line: 3},
+					{Kind: yaml.ScalarNode, Tag: "!!int", Value: "0b1010", Line: 3},
+					{Kind: yaml.ScalarNode, Value: "underscored_int", Line: 4},
+					{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1_000_000", Line: 4},
+				},
+			},
+		},
+		want: `{
+			"_kics_lines": {
+			  "_kics__default": {"_kics_line": 0},
+			  "_kics_hex_int": {"_kics_line": 1},
+			  "_kics_octal_int": {"_kics_line": 2},
+			  "_kics_binary_int": {"_kics_line": 3},
+			  "_kics_underscored_int": {"_kics_line": 4}
+			},
+			"hex_int": 26,
+			"octal_int": 493,
+			"binary_int": 10,
+			"underscored_int": 1000000
+		  }`,
+	},
+	{
+		name:    "test float scalar",
+		m:       &Document{},
+		wantErr: false,
+		args: args{
+			value: &yaml.Node{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "ratio", Line: 1},
+					{Kind: yaml.ScalarNode, Tag: "!!float", Value: "3.14", Line: 1},
+					{Kind: yaml.ScalarNode, Value: "count", Line: 2},
+					{Kind: yaml.ScalarNode, Tag: "!!int", Value: "42", Line: 2},
+				},
+			},
+		},
+		want: `{
+			"_kics_lines": {
+			  "_kics__default": {"_kics_line": 0},
+			  "_kics_ratio": {"_kics_line": 1},
+			  "_kics_count": {"_kics_line": 2}
+			},
+			"ratio": 3.14,
+			"count": 42
+		  }`,
+	},
+	{
+		name:    "test bool and null scalars",
+		m:       &Document{},
+		wantErr: false,
+		args: args{
+			value: &yaml.Node{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "enabled", Line: 1},
+					{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "true", Line: 1},
+					{Kind: yaml.ScalarNode, Value: "disabled", Line: 2},
+					{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "false", Line: 2},
+					{Kind: yaml.ScalarNode, Value: "empty", Line: 3},
+					{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null", Line: 3},
+				},
+			},
+		},
+		want: `{
+			"_kics_lines": {
+			  "_kics__default": {"_kics_line": 0},
+			  "_kics_enabled": {"_kics_line": 1},
+			  "_kics_disabled": {"_kics_line": 2},
+			  "_kics_empty": {"_kics_line": 3}
+			},
+			"enabled": true,
+			"disabled": false,
+			"empty": null
+		  }`,
+	},
 }
 
 func TestDocument_UnmarshalYAML(t *testing.T) {
@@ -533,4 +620,38 @@ func TestDocument_UnmarshalYAML_CircularReference(t *testing.T) {
 		// Verify the document was parsed (even with nil values for circular refs)
 		require.NotNil(t, doc)
 	})
+}
+
+// TestDocument_UnmarshalYAML_FromBytes verifies that parsing real YAML bytes (hex, octal, etc.)
+// produces the correct numeric values via the full node pipeline (decoder sets Tag/Value, then we resolve).
+func TestDocument_UnmarshalYAML_FromBytes(t *testing.T) {
+	ctx := context.Background()
+
+	yamlBytes := []byte(`
+port: 0x1A
+mode: 0o755
+mask: 0b1111
+replicas: 1_000_000
+ratio: 2.5
+enabled: true
+`)
+
+	var root yaml.Node
+	err := yaml.Unmarshal(yamlBytes, &root)
+	require.NoError(t, err)
+	require.Equal(t, yaml.DocumentNode, root.Kind)
+	require.Len(t, root.Content, 1)
+
+	doc := &Document{}
+	err = doc.UnmarshalYAML(ctx, root.Content[0])
+	require.NoError(t, err)
+
+	// Values go through JSON round-trip so numbers become float64 in Document
+	d := *doc
+	require.Equal(t, float64(26), d["port"], "hex 0x1A = 26")
+	require.Equal(t, float64(493), d["mode"], "octal 0o755 = 493")
+	require.Equal(t, float64(15), d["mask"], "binary 0b1111 = 15")
+	require.Equal(t, float64(1000000), d["replicas"], "underscored 1_000_000 = 1000000")
+	require.Equal(t, 2.5, d["ratio"], "float 2.5")
+	require.Equal(t, true, d["enabled"], "bool true")
 }

@@ -9,7 +9,6 @@ import (
 	"context"
 	json "encoding/json"
 	"errors"
-	"strconv"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/utils"
@@ -173,30 +172,10 @@ func getSeqLines(val *yaml.Node, def int) map[string]*LineObject {
 // scalarNodeResolver transforms a ScalarNode value in its correct type
 func scalarNodeResolver(ctx context.Context, val *yaml.Node) interface{} {
 	contextLogger := logger.FromContext(ctx)
-	var transformed interface{} = val.Value
-	switch val.Tag {
-	case "!!bool":
-		transformed = transformBoolScalarNode(val.Value)
-	case "!!int":
-		v, err := strconv.Atoi(val.Value)
-		if err != nil {
-			contextLogger.Error().Msgf("failed to convert integer in yaml parser")
-			return val.Value
-		}
-		transformed = v
-	case "!!null":
-		transformed = nil
+	var resolved interface{}
+	if err := val.Decode(&resolved); err != nil {
+		contextLogger.Error().Msgf("failed to decode scalar in yaml parser: %q", val.Value)
+		return val.Value
 	}
-
-	return transformed
-}
-
-// transformBoolScalarNode transforms a string value to its boolean representation
-func transformBoolScalarNode(value string) bool {
-	switch value {
-	case "true", "True":
-		return true
-	default:
-		return false
-	}
+	return resolved
 }
