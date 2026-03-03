@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -26,6 +27,7 @@ type kindParser interface {
 	Resolve(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) ([]byte, error)
 	StringifyContent(content []byte) (string, error)
 	GetResolvedFiles(filename string) map[string]model.ResolvedFile
+	Clone() any
 }
 
 // Builder is a representation of parsers that will be construct
@@ -141,16 +143,20 @@ func (c *Parser) Parse(
 	fileContent = utils.DecryptAnsibleVault(ctx, fileContent, os.Getenv("ANSIBLE_VAULT_PASSWORD_FILE"))
 
 	if c.isValidExtension(ctx, filePath) {
-		resolved, err := c.parsers.Resolve(ctx, fileContent, filePath, openAPIResolveReferences, maxResolverDepth)
+		parser, ok := c.parsers.Clone().(kindParser)
+		if !ok {
+			return ParsedDocument{}, fmt.Errorf("invalid kindParser")
+		}
+		resolved, err := parser.Resolve(ctx, fileContent, filePath, openAPIResolveReferences, maxResolverDepth)
 		if err != nil {
 			return ParsedDocument{}, err
 		}
-		obj, igLines, err := c.parsers.Parse(ctx, filePath, resolved)
+		obj, igLines, err := parser.Parse(ctx, filePath, resolved)
 		if err != nil {
 			return ParsedDocument{}, err
 		}
 
-		cont, err := c.parsers.StringifyContent(fileContent)
+		cont, err := parser.StringifyContent(fileContent)
 		if err != nil {
 			contextLogger.Error().Msgf("failed to stringify original content: %s", err)
 			cont = string(fileContent)
@@ -158,11 +164,11 @@ func (c *Parser) Parse(
 
 		return ParsedDocument{
 			Docs:          obj,
-			Kind:          c.parsers.GetKind(),
+			Kind:          parser.GetKind(),
 			Content:       cont,
 			IgnoreLines:   igLines,
 			CountLines:    bytes.Count(resolved, []byte{'\n'}) + 1,
-			ResolvedFiles: c.parsers.GetResolvedFiles(filePath),
+			ResolvedFiles: parser.GetResolvedFiles(filePath),
 			IsMinified:    isMinified,
 		}, nil
 	}

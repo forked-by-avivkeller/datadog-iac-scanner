@@ -25,6 +25,7 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, _ string, _ bo
 
 // Parse parses .ini file and returns it as a Document
 func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]model.Document, []int, error) {
+	model.NewIgnore.Reset()
 	inventoryReader := strings.NewReader(string(fileContent))
 	var inventory, err = aini.Parse(inventoryReader)
 	if err != nil {
@@ -139,4 +140,8 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 
 func emptyDocument() *model.Document {
 	return &model.Document{}
+}
+
+func (p *Parser) Clone() any {
+	return &Parser{}
 }

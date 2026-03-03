@@ -193,3 +193,7 @@ func saveEnvs(envs map[string]string, envValues []string) map[string]string {
 	}
 	return envs
 }
+
+func (p *Parser) Clone() any {
+	return &Parser{}
+}

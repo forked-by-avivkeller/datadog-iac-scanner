@@ -6,7 +6,6 @@
 package model
 
 import (
-	"context"
 	"reflect"
 	"strings"
 	"sync"
@@ -21,59 +20,41 @@ type comment string
 type Ignore struct {
 	// Lines is the lines to ignore
 	Lines []int
-	mu    sync.Mutex
 }
-
-type ContextKeyIgnore struct{}
 
 var (
 	NewIgnore = &Ignore{}
+	mu        sync.Mutex
 )
-
-func getIgnoreFromContext(ctx context.Context) *Ignore {
-	if ctx == nil {
-		return NewIgnore
-	}
-	if ignore, ok := ctx.Value(ContextKeyIgnore{}).(*Ignore); ok {
-		return ignore
-	}
-	return NewIgnore
-}
-
-// WithIgnore creates a new context with an Ignore instance
-func WithIgnore(ctx context.Context) context.Context {
-	return context.WithValue(ctx, ContextKeyIgnore{}, &Ignore{Lines: make([]int, 0)})
-}
 
 // build builds the ignore struct
 func (i *Ignore) build(lines []int) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 	i.Lines = append(i.Lines, lines...)
 }
 
 // GetLines returns the lines to ignore
 func (i *Ignore) GetLines() []int {
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 	return RemoveDuplicates(i.Lines)
 }
 
 // Reset resets the ignore struct
 func (i *Ignore) Reset() {
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 	i.Lines = make([]int, 0)
 }
 
 // ignoreCommentsYAML sets the lines to ignore for a yaml file
-func ignoreCommentsYAML(ctx context.Context, node *yaml.Node) {
-	ignore := getIgnoreFromContext(ctx)
+func ignoreCommentsYAML(node *yaml.Node) {
 	linesIgnore := make([]int, 0)
 	if node.HeadComment != "" {
 		// Squence Node - Head Comment comes in root node
 		linesIgnore = append(linesIgnore, processCommentYAML((*comment)(&node.HeadComment), 0, node, node.Kind, false)...)
-		ignore.build(linesIgnore)
+		NewIgnore.build(linesIgnore)
 		return
 	}
 	// check if comment is in the content
@@ -87,7 +68,7 @@ func ignoreCommentsYAML(ctx context.Context, node *yaml.Node) {
 		linesIgnore = append(linesIgnore, processCommentYAML((*comment)(&content.HeadComment), i, node, node.Kind, false)...)
 	}
 
-	ignore.build(linesIgnore)
+	NewIgnore.build(linesIgnore)
 }
 
 // processCommentYAML returns the lines to ignore

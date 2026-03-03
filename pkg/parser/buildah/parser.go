@@ -229,3 +229,7 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
 	return make(map[string]model.ResolvedFile)
 }
+
+func (p *Parser) Clone() any {
+	return &Parser{}
+}

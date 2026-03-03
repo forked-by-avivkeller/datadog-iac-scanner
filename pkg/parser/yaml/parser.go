@@ -52,7 +52,7 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename strin
 // Parse parses yaml/yml file and returns it as a Document
 func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error) {
 	// Create a context-local Ignore instance to avoid race conditions
-	ctx = model.WithIgnore(ctx)
+	model.NewIgnore.Reset()
 	var documents []model.Document
 
 	// Parse all documents as nodes
@@ -82,8 +82,7 @@ func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte)
 		return nil, []int{}, errors.New("no documents found in yaml file")
 	}
 
-	ignore := ctx.Value(model.ContextKeyIgnore{}).(*model.Ignore)
-	linesToIgnore := ignore.GetLines()
+	linesToIgnore := model.NewIgnore.GetLines()
 
 	// UnmarshalYAML already adds line tracking, so we can use documents directly
 	return convertKeysToString(addExtraInfo(ctx, documents, filePath)), linesToIgnore, nil
@@ -223,4 +222,18 @@ func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile
 	resolvedFiles := make(map[string]model.ResolvedFile, len(p.resolvedFiles))
 	maps.Copy(resolvedFiles, p.resolvedFiles[filename])
 	return resolvedFiles
+}
+
+func (p *Parser) Clone() any {
+	p.resolvedFilesMu.RLock()
+	defer p.resolvedFilesMu.RUnlock()
+	resolvedFiles := make(map[string]map[string]model.ResolvedFile, len(p.resolvedFiles))
+	for filename, innerMap := range p.resolvedFiles {
+		innerCopy := make(map[string]model.ResolvedFile, len(innerMap))
+		maps.Copy(innerCopy, innerMap)
+		resolvedFiles[filename] = innerCopy
+	}
+	return &Parser{
+		resolvedFiles: p.resolvedFiles,
+	}
 }

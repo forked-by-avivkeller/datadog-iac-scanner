@@ -125,3 +125,17 @@ func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile
 	maps.Copy(resolvedFiles, p.resolvedFiles[filename])
 	return resolvedFiles
 }
+
+func (p *Parser) Clone() any {
+	p.resolvedFilesMu.RLock()
+	defer p.resolvedFilesMu.RUnlock()
+	resolvedFiles := make(map[string]map[string]model.ResolvedFile, len(p.resolvedFiles))
+	for filename, innerMap := range p.resolvedFiles {
+		innerCopy := make(map[string]model.ResolvedFile, len(innerMap))
+		maps.Copy(innerCopy, innerMap)
+		resolvedFiles[filename] = innerCopy
+	}
+	return &Parser{
+		resolvedFiles: resolvedFiles,
+	}
+}

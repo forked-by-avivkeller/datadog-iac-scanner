@@ -253,3 +253,11 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
 	return make(map[string]model.ResolvedFile)
 }
+
+func (p *Parser) Clone() any {
+	parser := NewDefaultWithParams(p.terraformVarsPath, p.sciInfo)
+	p.inputVarsMu.RLock()
+	defer p.inputVarsMu.RUnlock()
+	maps.Copy(parser.inputVariables, p.inputVariables)
+	return parser
+}

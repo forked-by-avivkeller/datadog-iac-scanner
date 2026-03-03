@@ -6,7 +6,6 @@
 package model
 
 import (
-	"context"
 	"sort"
 	"testing"
 
@@ -667,10 +666,9 @@ func Test_ignoreCommentsYAML(t *testing.T) {
 			},
 		},
 	}
-	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ignoreCommentsYAML(ctx, tt.args.node)
+			ignoreCommentsYAML(tt.args.node)
 			ignoreLines := NewIgnore.GetLines()
 			NewIgnore.Reset()
 			if len(ignoreLines) > 0 {
