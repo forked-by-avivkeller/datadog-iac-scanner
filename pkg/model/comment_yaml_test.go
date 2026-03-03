@@ -666,11 +666,12 @@ func Test_ignoreCommentsYAML(t *testing.T) {
 			},
 		},
 	}
+	ignore := Ignore{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ignoreCommentsYAML(tt.args.node)
-			ignoreLines := NewIgnore.GetLines()
-			NewIgnore.Reset()
+			ignore.ignoreCommentsYAML(tt.args.node)
+			ignoreLines := ignore.GetLines()
+			ignore.Reset()
 			if len(ignoreLines) > 0 {
 				sort.Ints(ignoreLines)
 			}

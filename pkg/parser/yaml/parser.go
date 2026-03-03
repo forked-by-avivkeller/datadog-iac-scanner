@@ -22,6 +22,7 @@ import (
 
 // Parser defines a parser type
 type Parser struct {
+	ignore          *model.Ignore
 	resolvedFiles   map[string]map[string]model.ResolvedFile
 	resolvedFilesMu sync.RWMutex
 }
@@ -51,8 +52,7 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename strin
 
 // Parse parses yaml/yml file and returns it as a Document
 func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error) {
-	// Create a context-local Ignore instance to avoid race conditions
-	model.NewIgnore.Reset()
+	p.ignore.Reset()
 	var documents []model.Document
 
 	// Parse all documents as nodes
@@ -68,7 +68,7 @@ func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte)
 			// Get the actual content (not the document wrapper)
 			contentNode := node.Content[0]
 			doc := model.Document{}
-			if err := doc.UnmarshalYAML(ctx, contentNode); err != nil {
+			if err := doc.UnmarshalYAML(ctx, contentNode, p.ignore); err != nil {
 				return nil, []int{}, errors.Wrap(err, "failed to unmarshal yaml")
 			}
 
@@ -82,7 +82,7 @@ func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte)
 		return nil, []int{}, errors.New("no documents found in yaml file")
 	}
 
-	linesToIgnore := model.NewIgnore.GetLines()
+	linesToIgnore := p.ignore.GetLines()
 
 	// UnmarshalYAML already adds line tracking, so we can use documents directly
 	return convertKeysToString(addExtraInfo(ctx, documents, filePath)), linesToIgnore, nil
@@ -235,5 +235,6 @@ func (p *Parser) Clone() any {
 	}
 	return &Parser{
 		resolvedFiles: p.resolvedFiles,
+		ignore:        &model.Ignore{},
 	}
 }
