@@ -73,6 +73,12 @@ var scanAction = &cli.Command{
 			Usage:   "a list of platform types to scan",
 			Value:   GetSupportedPlatforms(),
 		},
+		&cli.BoolFlag{
+			Name:   "x-parallelparsing",
+			Hidden: true,
+			Usage:  "(experimental, will be removed soon) parse files in parallel",
+			Value:  false,
+		},
 	},
 	Action: runScan,
 }
@@ -128,7 +134,7 @@ func runScan(ctx context.Context, c *cli.Command) error {
 		ExcludePlatform:   []string{""},
 		PayloadPath:       payloadPath,
 		SCIInfo:           model.SCIInfo{RunType: "ci", RepositoryCommitInfo: *repoInfo},
-		FlagEvaluator:     featureflags.NewLocalEvaluator(),
+		FlagEvaluator:     getFeatureFlagEvaluator(c),
 		ExcludeCategories: config.ExcludeCategories,
 		ExcludeQueries:    append(c.StringSlice("exclude-queries"), config.ExcludeQueries...),
 		ExcludeResults:    config.ExcludeResults,
@@ -334,4 +340,10 @@ func selectPlatforms(platforms []string) []string {
 		}
 	}
 	return out
+}
+
+func getFeatureFlagEvaluator(c *cli.Command) featureflags.FlagEvaluator {
+	overrides := map[string]bool{}
+	overrides[featureflags.IaCEnableKicsParallelFileParsing] = c.Bool("x-parallelparsing")
+	return featureflags.NewLocalEvaluatorWithOverrides(overrides)
 }
