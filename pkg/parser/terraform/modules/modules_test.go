@@ -560,6 +560,38 @@ func TestResolveExpr_TemplateWrapExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_ConditionalExpr(t *testing.T) {
+	t.Run("main_switch_resolves_condition_true_false", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.enabled ? var.yes : var.no`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ConditionalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ConditionalExpr, got %T", expr)
+		}
+
+		vars := map[string]string{"enabled": "true", "yes": "./module-a", "no": "./module-b"}
+		result := resolveExpr(expr, map[string]string{}, vars)
+		want := "true ? ./module-a : ./module-b"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("in_template_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`"${var.flag ? var.a : var.b}"`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{"flag": "x", "a": "first", "b": "second"})
+		want := "x ? first : second"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
 func TestResolveExpr_FunctionCallExpr(t *testing.T) {
 	t.Run("format_function_resolves", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression(

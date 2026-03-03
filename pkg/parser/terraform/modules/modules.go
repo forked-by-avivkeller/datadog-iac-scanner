@@ -238,6 +238,12 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 				result.WriteString(resolveExpr(p, locals, vars))
 			case *hclsyntax.TemplateWrapExpr:
 				result.WriteString(resolveExpr(p.Wrapped, locals, vars))
+			case *hclsyntax.ConditionalExpr:
+				result.WriteString(resolveExpr(p.Condition, locals, vars))
+				result.WriteString(" ? ")
+				result.WriteString(resolveExpr(p.TrueResult, locals, vars))
+				result.WriteString(" : ")
+				result.WriteString(resolveExpr(p.FalseResult, locals, vars))
 			default:
 				result.WriteString("${UNSUPPORTED_TEMPLATE_EXPR}")
 			}
@@ -258,6 +264,12 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 
 	case *hclsyntax.ParenthesesExpr:
 		return resolveExpr(e.Expression, locals, vars)
+
+	case *hclsyntax.ConditionalExpr:
+		condStr := resolveExpr(e.Condition, locals, vars)
+		trueStr := resolveExpr(e.TrueResult, locals, vars)
+		falseStr := resolveExpr(e.FalseResult, locals, vars)
+		return condStr + " ? " + trueStr + " : " + falseStr
 
 	default:
 		return resolveExprDefault(expr)

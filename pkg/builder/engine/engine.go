@@ -43,6 +43,20 @@ func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (st
 		return e.expToStringRelativeTraversal(ctx, t)
 	case *hclsyntax.FunctionCallExpr:
 		return e.expToStringFunctionCall(ctx, t)
+	case *hclsyntax.ConditionalExpr:
+		condStr, err := e.ExpToString(ctx, t.Condition)
+		if err != nil {
+			return "", err
+		}
+		trueStr, err := e.ExpToString(ctx, t.TrueResult)
+		if err != nil {
+			return "", err
+		}
+		falseStr, err := e.ExpToString(ctx, t.FalseResult)
+		if err != nil {
+			return "", err
+		}
+		return condStr + " ? " + trueStr + " : " + falseStr, nil
 	}
 	err := fmt.Errorf("can't convert expression %T to string", expr)
 	contextLogger.Error().Msg(err.Error())

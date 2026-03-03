@@ -784,6 +784,11 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) {
 		return expressionToASTRelativeTraversalExpr(e), nil
 	case *hclsyntax.FunctionCallExpr:
 		return expressionToASTFunctionCallExpr(e), nil
+	case *hclsyntax.ConditionalExpr:
+		condV, _ := expressionToAST(e.Condition)
+		trueV, _ := expressionToAST(e.TrueResult)
+		falseV, _ := expressionToAST(e.FalseResult)
+		return ast.String(astValueToSimpleString(condV) + " ? " + astValueToSimpleString(trueV) + " : " + astValueToSimpleString(falseV)), nil
 	default:
 		return ast.String("__UNSUPPORTED_EXPR__"), nil
 	}

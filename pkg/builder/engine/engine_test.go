@@ -207,6 +207,30 @@ func TestExpToString_ParenthesesExpr(t *testing.T) {
 	})
 }
 
+func TestExpToString_ConditionalExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("returns_condition_true_false_string", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.enabled ? "yes" : "no"`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ConditionalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ConditionalExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		want := "var.enabled ? yes : no"
+		if got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestExpToString_FunctionCallExpr(t *testing.T) {
 	e := &Engine{}
 	ctx := context.Background()
@@ -284,7 +308,8 @@ func TestExpToString_FunctionCallExpr(t *testing.T) {
 	})
 
 	t.Run("unsupported_arg_propagates_error", func(t *testing.T) {
-		expr, diags := hclsyntax.ParseExpression([]byte(`upper(true ? "a" : "b")`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		// Use tuple as argument; TupleConsExpr is not handled by ExpToString
+		expr, diags := hclsyntax.ParseExpression([]byte(`upper([1, 2])`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
 		if diags.HasErrors() {
 			t.Fatalf("parse failed: %v", diags)
 		}
