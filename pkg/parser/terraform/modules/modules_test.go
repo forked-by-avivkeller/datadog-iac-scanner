@@ -498,6 +498,100 @@ func TestResolveExpr_RelativeTraversalExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_FunctionCallExpr(t *testing.T) {
+	t.Run("format_function_resolves", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`format("%s/%s", var.base, var.path)`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{
+			"base": "./modules",
+			"path": "vpc",
+		})
+		want := "./modules/vpc"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("join_function_resolves", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`join("-", ["a", "b", "c"])`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "a-b-c"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("unsupported_function_returns_sentinel", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`tostring(var.x)`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "__UNSUPPORTED_FUNC_tostring__"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("function_call_in_template_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`"prefix-${format("%s", "value")}"`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "prefix-value"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("unsupported_function_in_template_returns_sentinel", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression(
+			[]byte(`"prefix-${tostring(var.x)}"`),
+			"test.hcl", hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "prefix-__UNSUPPORTED_FUNC_tostring__"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
 func TestGetProviderFromResourceType(t *testing.T) {
 	tests := []struct {
 		name      string

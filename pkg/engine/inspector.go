@@ -850,6 +850,18 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) { //nolint:go
 		}
 		return ast.String(sourceStr), nil
 
+	case *hclsyntax.FunctionCallExpr:
+		args := make([]string, 0, len(e.Args))
+		for _, arg := range e.Args {
+			v, err := expressionToAST(arg)
+			if err != nil {
+				args = append(args, unresolvedPlaceholder)
+				continue
+			}
+			args = append(args, astValueToSimpleString(v))
+		}
+		return ast.String(e.Name + "(" + strings.Join(args, ", ") + ")"), nil
+
 	default:
 		return ast.String("__UNSUPPORTED_EXPR__"), nil
 	}

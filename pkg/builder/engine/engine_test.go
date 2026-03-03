@@ -150,7 +150,7 @@ func TestExpToString_RelativeTraversalExpr(t *testing.T) {
 		}
 	})
 
-	t.Run("unsupported_source_propagates_error", func(t *testing.T) {
+	t.Run("function_call_source_now_resolves", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte("tostring(var.x).attr"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
 		if diags.HasErrors() {
 			t.Fatalf("parse failed: %v", diags)
@@ -159,9 +159,104 @@ func TestExpToString_RelativeTraversalExpr(t *testing.T) {
 			t.Fatalf("expected *hclsyntax.RelativeTraversalExpr, got %T", expr)
 		}
 
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "tostring(var.x).attr"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestExpToString_FunctionCallExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("simple_function_call", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`upper("hello")`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "upper(hello)"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("function_call_with_multiple_args", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`format("%s-%s", var.a, var.b)`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "format(%s-%s, var.a, var.b)"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("function_call_no_args", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`timestamp()`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "timestamp()"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("nested_function_calls", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`upper(format("%s", var.x))`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "upper(format(%s, var.x))"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("unsupported_arg_propagates_error", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`upper(true ? "a" : "b")`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
 		_, err := e.ExpToString(ctx, expr)
 		if err == nil {
-			t.Error("ExpToString should return error for unsupported source type")
+			t.Error("ExpToString should return error for unsupported argument type")
 		}
 	})
 }

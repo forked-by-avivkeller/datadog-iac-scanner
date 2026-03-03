@@ -385,6 +385,94 @@ block "test" {
 	})
 }
 
+func TestFunctionCallExprInStringPart(t *testing.T) {
+	t.Run("function_call_in_template_resolves", func(t *testing.T) {
+		input := `
+block "test" {
+  name = "prefix-${upper("hello")}"
+}
+`
+		ctx := context.Background()
+		file, diags := hclsyntax.ParseConfig([]byte(input), "testFileName", hcl.Pos{Byte: 0, Line: 1, Column: 1})
+		require.False(t, diags.HasErrors(), "parse error: %v", diags)
+
+		body, err := DefaultConverted(ctx, file, VariableMap{})
+		require.NoError(t, err)
+
+		blockDoc := body["block"].(model.Document)["test"].(model.Document)
+		gotValue := ""
+		if token, ok := blockDoc["name"].(ctyjson.SimpleJSONValue); ok {
+			gotValue = token.Value.AsString()
+		} else if s, ok := blockDoc["name"].(string); ok {
+			gotValue = s
+		}
+		require.Equal(t, "prefix-HELLO", gotValue)
+	})
+
+	t.Run("function_call_in_template_with_vars", func(t *testing.T) {
+		input := `
+block "test" {
+  name = "prefix-${upper(var.env)}"
+}
+`
+		ctx := context.Background()
+		file, diags := hclsyntax.ParseConfig([]byte(input), "testFileName", hcl.Pos{Byte: 0, Line: 1, Column: 1})
+		require.False(t, diags.HasErrors(), "parse error: %v", diags)
+
+		body, err := DefaultConverted(ctx, file, VariableMap{
+			"var": cty.ObjectVal(map[string]cty.Value{
+				"env": cty.StringVal("production"),
+			}),
+		})
+		require.NoError(t, err)
+
+		blockDoc := body["block"].(model.Document)["test"].(model.Document)
+		gotValue := ""
+		if token, ok := blockDoc["name"].(ctyjson.SimpleJSONValue); ok {
+			gotValue = token.Value.AsString()
+		} else if s, ok := blockDoc["name"].(string); ok {
+			gotValue = s
+		}
+		require.Equal(t, "prefix-PRODUCTION", gotValue)
+	})
+
+	t.Run("function_call_in_template_without_vars_wraps", func(t *testing.T) {
+		input := `
+block "test" {
+  name = "prefix-${upper(var.env)}"
+}
+`
+		ctx := context.Background()
+		file, diags := hclsyntax.ParseConfig([]byte(input), "testFileName", hcl.Pos{Byte: 0, Line: 1, Column: 1})
+		require.False(t, diags.HasErrors(), "parse error: %v", diags)
+
+		body, err := DefaultConverted(ctx, file, VariableMap{})
+		require.NoError(t, err)
+
+		blockDoc := body["block"].(model.Document)["test"].(model.Document)
+		gotValue := fmt.Sprintf("%v", blockDoc["name"])
+		require.Contains(t, gotValue, "upper")
+	})
+
+	t.Run("function_call_returning_non_string_wraps", func(t *testing.T) {
+		input := `
+block "test" {
+  name = "prefix-${length("hello")}"
+}
+`
+		ctx := context.Background()
+		file, diags := hclsyntax.ParseConfig([]byte(input), "testFileName", hcl.Pos{Byte: 0, Line: 1, Column: 1})
+		require.False(t, diags.HasErrors(), "parse error: %v", diags)
+
+		body, err := DefaultConverted(ctx, file, VariableMap{})
+		require.NoError(t, err)
+
+		blockDoc := body["block"].(model.Document)["test"].(model.Document)
+		gotValue := fmt.Sprintf("%v", blockDoc["name"])
+		require.Contains(t, gotValue, "length")
+	})
+}
+
 func TestEvalFunction(t *testing.T) { //nolint
 	type funcTest struct {
 		name    string
