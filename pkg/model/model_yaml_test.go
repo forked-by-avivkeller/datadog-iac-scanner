@@ -643,7 +643,7 @@ enabled: true
 	require.Len(t, root.Content, 1)
 
 	doc := &Document{}
-	err = doc.UnmarshalYAML(ctx, root.Content[0])
+	err = doc.UnmarshalYAML(ctx, root.Content[0], nil)
 	require.NoError(t, err)
 
 	// Values go through JSON round-trip so numbers become float64 in Document
