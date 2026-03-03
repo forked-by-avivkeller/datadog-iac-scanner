@@ -529,6 +529,37 @@ func TestResolveExpr_ParenthesesExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_TemplateWrapExpr(t *testing.T) {
+	t.Run("main_switch_unwraps_and_resolves", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`"${var.source}"`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.TemplateWrapExpr); !ok {
+			t.Fatalf("expected TemplateWrapExpr, got %T", expr)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{"source": "./local/module"})
+		want := "./local/module"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+
+	t.Run("in_template_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`"prefix-${var.x}-suffix"`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		result := resolveExpr(expr, map[string]string{}, map[string]string{"x": "value"})
+		want := "prefix-value-suffix"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
 func TestResolveExpr_FunctionCallExpr(t *testing.T) {
 	t.Run("format_function_resolves", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression(

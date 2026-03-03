@@ -236,6 +236,8 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 				result.WriteString(resolveExpr(p, locals, vars))
 			case *hclsyntax.ParenthesesExpr:
 				result.WriteString(resolveExpr(p, locals, vars))
+			case *hclsyntax.TemplateWrapExpr:
+				result.WriteString(resolveExpr(p.Wrapped, locals, vars))
 			default:
 				result.WriteString("${UNSUPPORTED_TEMPLATE_EXPR}")
 			}
@@ -244,6 +246,9 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 
 	case *hclsyntax.ScopeTraversalExpr:
 		return resolveScopeTraversal(e, locals, vars)
+
+	case *hclsyntax.TemplateWrapExpr:
+		return resolveExpr(e.Wrapped, locals, vars)
 
 	case *hclsyntax.FunctionCallExpr:
 		return resolveFunctionCall(e, locals, vars)
