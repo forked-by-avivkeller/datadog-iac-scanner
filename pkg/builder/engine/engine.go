@@ -57,6 +57,30 @@ func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (st
 			return "", err
 		}
 		return condStr + " ? " + trueStr + " : " + falseStr, nil
+	case *hclsyntax.TupleConsExpr:
+		parts := make([]string, 0, len(t.Exprs))
+		for _, ex := range t.Exprs {
+			s, err := e.ExpToString(ctx, ex)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, s)
+		}
+		return "[" + strings.Join(parts, ", ") + "]", nil
+	case *hclsyntax.ObjectConsExpr:
+		parts := make([]string, 0, len(t.Items))
+		for _, item := range t.Items {
+			keyStr, err := e.ExpToString(ctx, item.KeyExpr)
+			if err != nil {
+				return "", err
+			}
+			valStr, err := e.ExpToString(ctx, item.ValueExpr)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, keyStr+": "+valStr)
+		}
+		return "{" + strings.Join(parts, ", ") + "}", nil
 	}
 	err := fmt.Errorf("can't convert expression %T to string", expr)
 	contextLogger.Error().Msg(err.Error())

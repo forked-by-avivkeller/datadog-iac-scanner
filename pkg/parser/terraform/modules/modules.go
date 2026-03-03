@@ -249,6 +249,20 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 				result.WriteString("[")
 				result.WriteString(resolveExpr(p.Key, locals, vars))
 				result.WriteString("]")
+			case *hclsyntax.TupleConsExpr:
+				parts := make([]string, 0, len(p.Exprs))
+				for _, ex := range p.Exprs {
+					parts = append(parts, resolveExpr(ex, locals, vars))
+				}
+				result.WriteString("[" + strings.Join(parts, ", ") + "]")
+			case *hclsyntax.ObjectConsExpr:
+				parts := make([]string, 0, len(p.Items))
+				for _, item := range p.Items {
+					keyStr := resolveExpr(item.KeyExpr, locals, vars)
+					valStr := resolveExpr(item.ValueExpr, locals, vars)
+					parts = append(parts, keyStr+": "+valStr)
+				}
+				result.WriteString("{" + strings.Join(parts, ", ") + "}")
 			default:
 				result.WriteString("${UNSUPPORTED_TEMPLATE_EXPR}")
 			}
@@ -280,6 +294,22 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 		collStr := resolveExpr(e.Collection, locals, vars)
 		keyStr := resolveExpr(e.Key, locals, vars)
 		return collStr + "[" + keyStr + "]"
+
+	case *hclsyntax.TupleConsExpr:
+		parts := make([]string, 0, len(e.Exprs))
+		for _, ex := range e.Exprs {
+			parts = append(parts, resolveExpr(ex, locals, vars))
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+
+	case *hclsyntax.ObjectConsExpr:
+		parts := make([]string, 0, len(e.Items))
+		for _, item := range e.Items {
+			keyStr := resolveExpr(item.KeyExpr, locals, vars)
+			valStr := resolveExpr(item.ValueExpr, locals, vars)
+			parts = append(parts, keyStr+": "+valStr)
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
 
 	default:
 		return resolveExprDefault(expr)

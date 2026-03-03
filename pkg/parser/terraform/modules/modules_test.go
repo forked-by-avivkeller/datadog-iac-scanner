@@ -560,6 +560,44 @@ func TestResolveExpr_TemplateWrapExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_TupleConsExpr(t *testing.T) {
+	t.Run("main_switch_resolves_elements", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`[var.a, var.b]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.TupleConsExpr); !ok {
+			t.Fatalf("expected *hclsyntax.TupleConsExpr, got %T", expr)
+		}
+
+		vars := map[string]string{"a": "x", "b": "y"}
+		result := resolveExpr(expr, map[string]string{}, vars)
+		want := "[x, y]"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
+func TestResolveExpr_ObjectConsExpr(t *testing.T) {
+	t.Run("main_switch_resolves_keys_and_values", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`{k = var.v}`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ObjectConsExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ObjectConsExpr, got %T", expr)
+		}
+
+		vars := map[string]string{"v": "resolved"}
+		result := resolveExpr(expr, map[string]string{}, vars)
+		want := "{k: resolved}"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
 func TestResolveExpr_IndexExpr(t *testing.T) {
 	t.Run("main_switch_resolves_collection_and_key", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte("var.list[var.i]"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
