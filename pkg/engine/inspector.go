@@ -760,111 +760,125 @@ func parseJsonencodeHCL(ctx context.Context, input string) (ast.Value, error) {
 }
 
 // expressionToAST converts HCL expression to OPA ast.Value
-func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) { //nolint:gocyclo
+func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) {
 	switch e := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
 		return literalToAst(e)
-
 	case *hclsyntax.TemplateExpr:
-		result := ""
-		for _, part := range e.Parts {
-			switch p := part.(type) {
-			case *hclsyntax.LiteralValueExpr:
-				if p.Val.Type().Equals(cty.String) {
-					result += p.Val.AsString()
-				}
-			default:
-				result += "${...}"
-			}
-		}
-		return ast.String(result), nil
-
+		return expressionToASTTemplateExpr(e), nil
 	case *hclsyntax.TemplateWrapExpr:
 		return expressionToAST(e.Wrapped)
-
 	case *hclsyntax.ScopeTraversalExpr:
 		return ast.String(e.Traversal.RootName()), nil
-
 	case *hclsyntax.TupleConsExpr:
-		terms := []*ast.Term{}
-		for _, item := range e.Exprs {
-			v, err := expressionToAST(item)
-			if err != nil {
-				v = ast.String(unresolvedPlaceholder)
-			}
-			terms = append(terms, ast.NewTerm(v))
-		}
-		return ast.NewArray(terms...), nil
-
+		return expressionToASTTupleConsExpr(e), nil
 	case *hclsyntax.ObjectConsExpr:
-		obj := ast.NewObject()
-		for _, item := range e.Items {
-			keyExpr := normalizeKeyExpr(item.KeyExpr)
-			keyVal, err := expressionToAST(keyExpr)
-			if err != nil {
-				continue
-			}
-			strKey, ok := keyVal.(ast.String)
-			if !ok {
-				continue
-			}
-			valVal, err := expressionToAST(item.ValueExpr)
-			if err != nil {
-				valVal = ast.String(unresolvedPlaceholder)
-			}
-			obj.Insert(ast.NewTerm(strKey), ast.NewTerm(valVal))
-		}
-		return obj, nil
-
+		return expressionToASTObjectConsExpr(e), nil
 	case *hclsyntax.ObjectConsKeyExpr:
 		return expressionToAST(e.UnwrapExpression())
-
 	case *hclsyntax.IndexExpr:
-		collV, err1 := expressionToAST(e.Collection)
-		keyV, err2 := expressionToAST(e.Key)
-		if err1 != nil || err2 != nil {
-			return ast.String(unresolvedPlaceholder), nil
-		}
-		collStr := astValueToSimpleString(collV)
-		keyStr := astValueToSimpleString(keyV)
-		return ast.String(collStr + "[" + keyStr + "]"), nil
-
+		return expressionToASTIndexExpr(e), nil
 	case *hclsyntax.RelativeTraversalExpr:
-		sourceVal, err := expressionToAST(e.Source)
-		if err != nil {
-			return ast.String(unresolvedPlaceholder), nil
-		}
-		sourceStr := astValueToSimpleString(sourceVal)
-		for _, step := range e.Traversal {
-			switch s := step.(type) {
-			case hcl.TraverseAttr:
-				sourceStr += "." + s.Name
-			case hcl.TraverseIndex:
-				switch s.Key.Type() {
-				case cty.Number:
-					sourceStr += "[" + s.Key.AsBigFloat().String() + "]"
-				case cty.String:
-					sourceStr += "[" + s.Key.AsString() + "]"
-				}
-			}
-		}
-		return ast.String(sourceStr), nil
-
+		return expressionToASTRelativeTraversalExpr(e), nil
 	case *hclsyntax.FunctionCallExpr:
-		args := make([]string, 0, len(e.Args))
-		for _, arg := range e.Args {
-			v, err := expressionToAST(arg)
-			if err != nil {
-				args = append(args, unresolvedPlaceholder)
-				continue
-			}
-			args = append(args, astValueToSimpleString(v))
-		}
-		return ast.String(e.Name + "(" + strings.Join(args, ", ") + ")"), nil
-
+		return expressionToASTFunctionCallExpr(e), nil
 	default:
 		return ast.String("__UNSUPPORTED_EXPR__"), nil
 	}
+}
+
+func expressionToASTTemplateExpr(e *hclsyntax.TemplateExpr) ast.Value {
+	result := ""
+	for _, part := range e.Parts {
+		switch p := part.(type) {
+		case *hclsyntax.LiteralValueExpr:
+			if p.Val.Type().Equals(cty.String) {
+				result += p.Val.AsString()
+			}
+		default:
+			result += "${...}"
+		}
+	}
+	return ast.String(result)
+}
+
+func expressionToASTTupleConsExpr(e *hclsyntax.TupleConsExpr) ast.Value {
+	terms := make([]*ast.Term, 0, len(e.Exprs))
+	for _, item := range e.Exprs {
+		v, err := expressionToAST(item)
+		if err != nil {
+			v = ast.String(unresolvedPlaceholder)
+		}
+		terms = append(terms, ast.NewTerm(v))
+	}
+	return ast.NewArray(terms...)
+}
+
+func expressionToASTObjectConsExpr(e *hclsyntax.ObjectConsExpr) ast.Value {
+	obj := ast.NewObject()
+	for _, item := range e.Items {
+		keyExpr := normalizeKeyExpr(item.KeyExpr)
+		keyVal, err := expressionToAST(keyExpr)
+		if err != nil {
+			continue
+		}
+		strKey, ok := keyVal.(ast.String)
+		if !ok {
+			continue
+		}
+		valVal, err := expressionToAST(item.ValueExpr)
+		if err != nil {
+			valVal = ast.String(unresolvedPlaceholder)
+		}
+		obj.Insert(ast.NewTerm(strKey), ast.NewTerm(valVal))
+	}
+	return obj
+}
+
+func expressionToASTIndexExpr(e *hclsyntax.IndexExpr) ast.Value {
+	collV, err1 := expressionToAST(e.Collection)
+	keyV, err2 := expressionToAST(e.Key)
+	if err1 != nil || err2 != nil {
+		return ast.String(unresolvedPlaceholder)
+	}
+	collStr := astValueToSimpleString(collV)
+	keyStr := astValueToSimpleString(keyV)
+	return ast.String(collStr + "[" + keyStr + "]")
+}
+
+func expressionToASTRelativeTraversalExpr(e *hclsyntax.RelativeTraversalExpr) ast.Value {
+	sourceVal, err := expressionToAST(e.Source)
+	if err != nil {
+		return ast.String(unresolvedPlaceholder)
+	}
+	sourceStr := astValueToSimpleString(sourceVal)
+	for _, step := range e.Traversal {
+		switch s := step.(type) {
+		case hcl.TraverseAttr:
+			sourceStr += "." + s.Name
+		case hcl.TraverseIndex:
+			switch s.Key.Type() {
+			case cty.Number:
+				sourceStr += "[" + s.Key.AsBigFloat().String() + "]"
+			case cty.String:
+				sourceStr += "[" + s.Key.AsString() + "]"
+			}
+		}
+	}
+	return ast.String(sourceStr)
+}
+
+func expressionToASTFunctionCallExpr(e *hclsyntax.FunctionCallExpr) ast.Value {
+	args := make([]string, 0, len(e.Args))
+	for _, arg := range e.Args {
+		v, err := expressionToAST(arg)
+		if err != nil {
+			args = append(args, unresolvedPlaceholder)
+			continue
+		}
+		args = append(args, astValueToSimpleString(v))
+	}
+	return ast.String(e.Name + "(" + strings.Join(args, ", ") + ")")
 }
 
 func astValueToSimpleString(v ast.Value) string {
