@@ -366,7 +366,7 @@ func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error)
 		return c.convertTemplateFor(v.Tuple.(*hclsyntax.ForExpr))
 	case *hclsyntax.ParenthesesExpr:
 		return c.convertStringPart(v.Expression)
-	case *hclsyntax.RelativeTraversalExpr:
+	case *hclsyntax.RelativeTraversalExpr, *hclsyntax.FunctionCallExpr:
 		c.inputVarsMu.RLock()
 		valueConverted, _ := expr.Value(&hcl.EvalContext{
 			Variables: c.inputVars,

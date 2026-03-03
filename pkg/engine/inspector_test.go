@@ -474,7 +474,7 @@ func TestShouldSkipFile(t *testing.T) {
 func TestInspector_DecodeQueryResults(t *testing.T) {
 
 	//context
-	contextToUSe := context.Background()
+	contextToUse := context.Background()
 
 	//build inspector
 	c := newInspectorInstance(t, []string{}, true)
@@ -492,7 +492,7 @@ func TestInspector_DecodeQueryResults(t *testing.T) {
 		{
 			name: "should_not_fail_when_timeout",
 			args: args{
-				queryContext: newQueryContext(contextToUSe),
+				queryContext: newQueryContext(contextToUse),
 				regoResult:   newResultset(),
 				timeDuration: "0s",
 			},
@@ -505,7 +505,8 @@ func TestInspector_DecodeQueryResults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			//create a context with 0 second to timeout
 			timeoutDuration, _ := time.ParseDuration(tt.args.timeDuration)
-			myCtxTimeOut, _ := context.WithTimeout(contextToUSe, timeoutDuration)
+			myCtxTimeOut, cancel := context.WithTimeout(contextToUse, timeoutDuration)
+			defer cancel()
 			result, err := c.DecodeQueryResults(ctx, &tt.args.queryContext, myCtxTimeOut, tt.args.regoResult, 57)
 			assert.Nil(t, err, "Error not as expected")
 			assert.Equal(t, 0, len(result), "Array size is not as expected")
@@ -647,7 +648,7 @@ func TestExpressionToAST_RelativeTraversalExpr(t *testing.T) {
 		}
 	})
 
-	t.Run("unsupported_source_returns_gracefully", func(t *testing.T) {
+	t.Run("function_call_source_now_resolves", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte("tostring(var.x).attr"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
 		if diags.HasErrors() {
 			t.Fatalf("parse failed: %v", diags)
@@ -659,9 +660,74 @@ func TestExpressionToAST_RelativeTraversalExpr(t *testing.T) {
 		}
 
 		got := val.String()
-		// FunctionCallExpr is unsupported → source is "__UNSUPPORTED_EXPR__"
-		// Traversal appends ".attr"
-		want := `"__UNSUPPORTED_EXPR__.attr"`
+		// FunctionCallExpr now resolves: tostring(var) where "var" is the root name
+		want := `"tostring(var).attr"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
+func TestExpressionToAST_FunctionCallExpr(t *testing.T) {
+	t.Run("simple_function_call", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`upper("hello")`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+
+		got := val.String()
+		want := `"upper(hello)"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+
+	t.Run("function_call_with_multiple_args", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`format("%s", var.name)`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+
+		got := val.String()
+		// ScopeTraversalExpr returns root name only
+		want := `"format(%s, var)"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+
+	t.Run("function_call_no_args", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`timestamp()`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.FunctionCallExpr); !ok {
+			t.Fatalf("expected *hclsyntax.FunctionCallExpr, got %T", expr)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+
+		got := val.String()
+		want := `"timestamp()"`
 		if got != want {
 			t.Errorf("expressionToAST = %s, want %s", got, want)
 		}

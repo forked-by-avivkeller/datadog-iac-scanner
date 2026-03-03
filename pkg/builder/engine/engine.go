@@ -26,47 +26,72 @@ func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (st
 	contextLogger := logger.FromContext(ctx)
 	switch t := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
-		s, err := ctyConvert.Convert(t.Val, cty.String)
-		if err != nil {
-			return "", err
-		}
-		return s.AsString(), nil
+		return e.expToStringLiteralValue(t)
 	case *hclsyntax.TemplateExpr:
-		if t.IsStringLiteral() {
-			v, err := t.Value(nil)
-			if err != nil {
-				return "", err
-			}
-			return v.AsString(), nil
-		}
-		builderString, err := e.buildString(ctx, t.Parts)
-		if err != nil {
-			return "", err
-		}
-
-		return builderString, nil
+		return e.expToStringTemplateExpr(ctx, t)
 	case *hclsyntax.TemplateWrapExpr:
 		return e.ExpToString(ctx, t.Wrapped)
 	case *hclsyntax.ObjectConsKeyExpr:
 		return e.ExpToString(ctx, t.Wrapped)
 	case *hclsyntax.ScopeTraversalExpr:
-		items := evaluateScopeTraversalExpr(t.Traversal)
-		return strings.Join(items, "."), nil
+		return e.expToStringScopeTraversal(t), nil
 	case *hclsyntax.IndexExpr:
 		return e.indexExprToString(ctx, t)
 	case *hclsyntax.RelativeTraversalExpr:
-		sourceStr, err := e.ExpToString(ctx, t.Source)
-		if err != nil {
-			return "", err
-		}
-		if len(t.Traversal) == 0 {
-			return sourceStr, nil
-		}
-		return sourceStr + relativeTraversalToString(t.Traversal), nil
+		return e.expToStringRelativeTraversal(ctx, t)
+	case *hclsyntax.FunctionCallExpr:
+		return e.expToStringFunctionCall(ctx, t)
 	}
 	err := fmt.Errorf("can't convert expression %T to string", expr)
 	contextLogger.Error().Msg(err.Error())
 	return "", err
+}
+
+func (e *Engine) expToStringLiteralValue(t *hclsyntax.LiteralValueExpr) (string, error) {
+	s, err := ctyConvert.Convert(t.Val, cty.String)
+	if err != nil {
+		return "", err
+	}
+	return s.AsString(), nil
+}
+
+func (e *Engine) expToStringTemplateExpr(ctx context.Context, t *hclsyntax.TemplateExpr) (string, error) {
+	if t.IsStringLiteral() {
+		v, err := t.Value(nil)
+		if err != nil {
+			return "", err
+		}
+		return v.AsString(), nil
+	}
+	return e.buildString(ctx, t.Parts)
+}
+
+func (e *Engine) expToStringScopeTraversal(t *hclsyntax.ScopeTraversalExpr) string {
+	items := evaluateScopeTraversalExpr(t.Traversal)
+	return strings.Join(items, ".")
+}
+
+func (e *Engine) expToStringRelativeTraversal(ctx context.Context, t *hclsyntax.RelativeTraversalExpr) (string, error) {
+	sourceStr, err := e.ExpToString(ctx, t.Source)
+	if err != nil {
+		return "", err
+	}
+	if len(t.Traversal) == 0 {
+		return sourceStr, nil
+	}
+	return sourceStr + relativeTraversalToString(t.Traversal), nil
+}
+
+func (e *Engine) expToStringFunctionCall(ctx context.Context, t *hclsyntax.FunctionCallExpr) (string, error) {
+	args := make([]string, 0, len(t.Args))
+	for _, arg := range t.Args {
+		s, err := e.ExpToString(ctx, arg)
+		if err != nil {
+			return "", err
+		}
+		args = append(args, s)
+	}
+	return t.Name + "(" + strings.Join(args, ", ") + ")", nil
 }
 
 func (e *Engine) buildString(ctx context.Context, parts []hclsyntax.Expression) (string, error) {
