@@ -169,6 +169,44 @@ func TestExpToString_RelativeTraversalExpr(t *testing.T) {
 	})
 }
 
+func TestExpToString_ParenthesesExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("unwraps_to_inner_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("(var.x)"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ParenthesesExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ParenthesesExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "var.x"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("nested_parentheses_unwrap", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("((var.a))"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "var.a"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestExpToString_FunctionCallExpr(t *testing.T) {
 	e := &Engine{}
 	ctx := context.Background()

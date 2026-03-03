@@ -31,6 +31,8 @@ func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (st
 		return e.expToStringTemplateExpr(ctx, t)
 	case *hclsyntax.TemplateWrapExpr:
 		return e.ExpToString(ctx, t.Wrapped)
+	case *hclsyntax.ParenthesesExpr:
+		return e.ExpToString(ctx, t.Expression)
 	case *hclsyntax.ObjectConsKeyExpr:
 		return e.ExpToString(ctx, t.Wrapped)
 	case *hclsyntax.ScopeTraversalExpr:

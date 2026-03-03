@@ -768,6 +768,8 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) {
 		return expressionToASTTemplateExpr(e), nil
 	case *hclsyntax.TemplateWrapExpr:
 		return expressionToAST(e.Wrapped)
+	case *hclsyntax.ParenthesesExpr:
+		return expressionToAST(e.Expression)
 	case *hclsyntax.ScopeTraversalExpr:
 		return ast.String(e.Traversal.RootName()), nil
 	case *hclsyntax.TupleConsExpr:
