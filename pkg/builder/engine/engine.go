@@ -44,43 +44,11 @@ func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (st
 	case *hclsyntax.FunctionCallExpr:
 		return e.expToStringFunctionCall(ctx, t)
 	case *hclsyntax.ConditionalExpr:
-		condStr, err := e.ExpToString(ctx, t.Condition)
-		if err != nil {
-			return "", err
-		}
-		trueStr, err := e.ExpToString(ctx, t.TrueResult)
-		if err != nil {
-			return "", err
-		}
-		falseStr, err := e.ExpToString(ctx, t.FalseResult)
-		if err != nil {
-			return "", err
-		}
-		return condStr + " ? " + trueStr + " : " + falseStr, nil
+		return e.expToStringConditionalExpr(ctx, t)
 	case *hclsyntax.TupleConsExpr:
-		parts := make([]string, 0, len(t.Exprs))
-		for _, ex := range t.Exprs {
-			s, err := e.ExpToString(ctx, ex)
-			if err != nil {
-				return "", err
-			}
-			parts = append(parts, s)
-		}
-		return "[" + strings.Join(parts, ", ") + "]", nil
+		return e.expToStringTupleConsExpr(ctx, t)
 	case *hclsyntax.ObjectConsExpr:
-		parts := make([]string, 0, len(t.Items))
-		for _, item := range t.Items {
-			keyStr, err := e.ExpToString(ctx, item.KeyExpr)
-			if err != nil {
-				return "", err
-			}
-			valStr, err := e.ExpToString(ctx, item.ValueExpr)
-			if err != nil {
-				return "", err
-			}
-			parts = append(parts, keyStr+": "+valStr)
-		}
-		return "{" + strings.Join(parts, ", ") + "}", nil
+		return e.expToStringObjectConsExpr(ctx, t)
 	}
 	err := fmt.Errorf("can't convert expression %T to string", expr)
 	contextLogger.Error().Msg(err.Error())
@@ -132,6 +100,50 @@ func (e *Engine) expToStringFunctionCall(ctx context.Context, t *hclsyntax.Funct
 		args = append(args, s)
 	}
 	return t.Name + "(" + strings.Join(args, ", ") + ")", nil
+}
+
+func (e *Engine) expToStringConditionalExpr(ctx context.Context, t *hclsyntax.ConditionalExpr) (string, error) {
+	condStr, err := e.ExpToString(ctx, t.Condition)
+	if err != nil {
+		return "", err
+	}
+	trueStr, err := e.ExpToString(ctx, t.TrueResult)
+	if err != nil {
+		return "", err
+	}
+	falseStr, err := e.ExpToString(ctx, t.FalseResult)
+	if err != nil {
+		return "", err
+	}
+	return condStr + " ? " + trueStr + " : " + falseStr, nil
+}
+
+func (e *Engine) expToStringTupleConsExpr(ctx context.Context, t *hclsyntax.TupleConsExpr) (string, error) {
+	parts := make([]string, 0, len(t.Exprs))
+	for _, ex := range t.Exprs {
+		s, err := e.ExpToString(ctx, ex)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, s)
+	}
+	return "[" + strings.Join(parts, ", ") + "]", nil
+}
+
+func (e *Engine) expToStringObjectConsExpr(ctx context.Context, t *hclsyntax.ObjectConsExpr) (string, error) {
+	parts := make([]string, 0, len(t.Items))
+	for _, item := range t.Items {
+		keyStr, err := e.ExpToString(ctx, item.KeyExpr)
+		if err != nil {
+			return "", err
+		}
+		valStr, err := e.ExpToString(ctx, item.ValueExpr)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, keyStr+": "+valStr)
+	}
+	return "{" + strings.Join(parts, ", ") + "}", nil
 }
 
 func (e *Engine) buildString(ctx context.Context, parts []hclsyntax.Expression) (string, error) {
