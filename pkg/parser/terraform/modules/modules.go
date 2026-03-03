@@ -232,9 +232,7 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 				}
 			case *hclsyntax.ScopeTraversalExpr:
 				result.WriteString(resolveScopeTraversal(p, locals, vars))
-			case *hclsyntax.RelativeTraversalExpr:
-				result.WriteString(resolveExpr(p, locals, vars))
-			case *hclsyntax.FunctionCallExpr:
+			case *hclsyntax.RelativeTraversalExpr, *hclsyntax.FunctionCallExpr:
 				result.WriteString(resolveExpr(p, locals, vars))
 			default:
 				result.WriteString("${UNSUPPORTED_TEMPLATE_EXPR}")

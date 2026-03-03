@@ -474,7 +474,7 @@ func TestShouldSkipFile(t *testing.T) {
 func TestInspector_DecodeQueryResults(t *testing.T) {
 
 	//context
-	contextToUSe := context.Background()
+	contextToUse := context.Background()
 
 	//build inspector
 	c := newInspectorInstance(t, []string{}, true)
@@ -492,7 +492,7 @@ func TestInspector_DecodeQueryResults(t *testing.T) {
 		{
 			name: "should_not_fail_when_timeout",
 			args: args{
-				queryContext: newQueryContext(contextToUSe),
+				queryContext: newQueryContext(contextToUse),
 				regoResult:   newResultset(),
 				timeDuration: "0s",
 			},
@@ -505,7 +505,7 @@ func TestInspector_DecodeQueryResults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			//create a context with 0 second to timeout
 			timeoutDuration, _ := time.ParseDuration(tt.args.timeDuration)
-			myCtxTimeOut, cancel := context.WithTimeout(contextToUSe, timeoutDuration)
+			myCtxTimeOut, cancel := context.WithTimeout(contextToUse, timeoutDuration)
 			defer cancel()
 			result, err := c.DecodeQueryResults(ctx, &tt.args.queryContext, myCtxTimeOut, tt.args.regoResult, 57)
 			assert.Nil(t, err, "Error not as expected")
