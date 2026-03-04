@@ -53,7 +53,7 @@ func unmarshalWithDepth(ctx context.Context, val *yaml.Node, visited map[*yaml.N
 	defer func() { delete(visited, val) }()
 	tmp := make(map[string]interface{})
 	if ignore == nil {
-		ignore = NewIgnore
+		return nil
 	}
 	ignore.ignoreCommentsYAML(val)
 

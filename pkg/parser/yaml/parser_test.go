@@ -48,9 +48,7 @@ func TestParser_SupportedTypes(t *testing.T) {
 
 // TestParser_Parse tests the functions [Parse()] and all the methods called by them
 func TestParser_Parse(t *testing.T) { //nolint
-	p := &Parser{
-		ignore: &model.Ignore{},
-	}
+	p := &Parser{}
 	have := []string{`
 # dd-iac-scan ignore-block
 martin:
@@ -470,9 +468,7 @@ func TestModel_TestYamlParser(t *testing.T) {
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser := Parser{
-				ignore: &model.Ignore{},
-			}
+			parser := Parser{}
 			got, _, err := parser.Parse(ctx, "", []byte(tt.sample))
 			if tt.wantErr {
 				require.Error(t, err)

@@ -539,9 +539,10 @@ var tests = []struct {
 
 func TestDocument_UnmarshalYAML(t *testing.T) {
 	ctx := context.Background()
+	ignore := &Ignore{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.m.UnmarshalYAML(ctx, tt.args.value, NewIgnore); (err != nil) != tt.wantErr {
+			if err := tt.m.UnmarshalYAML(ctx, tt.args.value, ignore); (err != nil) != tt.wantErr {
 				t.Errorf("Document.UnmarshalYAML() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			compareJSONLine(t, tt.m, tt.want)
@@ -612,9 +613,9 @@ func TestDocument_UnmarshalYAML_CircularReference(t *testing.T) {
 	t.Run("new_code_succeeds", func(t *testing.T) {
 		ctx := context.Background()
 		doc := &Document{}
-
+		ignore := &Ignore{}
 		// This should not cause a stack overflow with the fix
-		err := doc.UnmarshalYAML(ctx, node1, nil)
+		err := doc.UnmarshalYAML(ctx, node1, ignore)
 		require.NoError(t, err)
 
 		// Verify the document was parsed (even with nil values for circular refs)

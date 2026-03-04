@@ -23,10 +23,6 @@ type Ignore struct {
 	mu    sync.Mutex
 }
 
-var (
-	NewIgnore = &Ignore{}
-)
-
 // build builds the ignore struct
 func (i *Ignore) build(lines []int) {
 	i.mu.Lock()
@@ -39,13 +35,6 @@ func (i *Ignore) GetLines() []int {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	return RemoveDuplicates(i.Lines)
-}
-
-// Reset resets the ignore struct
-func (i *Ignore) Reset() {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	i.Lines = make([]int, 0)
 }
 
 // ignoreCommentsYAML sets the lines to ignore for a yaml file
