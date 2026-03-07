@@ -212,6 +212,8 @@ func (c *converter) convertExpression(expr hclsyntax.Expression) (interface{}, e
 		return c.convertTemplate(value)
 	case *hclsyntax.TemplateWrapExpr:
 		return c.convertExpression(value.Wrapped)
+	case *hclsyntax.ParenthesesExpr:
+		return c.convertExpression(value.Expression)
 	case *hclsyntax.TupleConsExpr:
 		list := make([]interface{}, 0)
 		for _, ex := range value.Exprs {
