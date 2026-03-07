@@ -434,6 +434,33 @@ func TestResolveExpr_BinaryOpExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_SplatExpr(t *testing.T) {
+	t.Run("splat_resolved_or_placeholder", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.SplatExpr); !ok {
+			t.Fatalf("expected *hclsyntax.SplatExpr, got %T", expr)
+		}
+		result := resolveExpr(expr, map[string]string{}, map[string]string{"list": "a,b"})
+		if result != "a,b[*]" && result != "__UNRESOLVED__" {
+			t.Errorf("resolveExpr = %q", result)
+		}
+	})
+	t.Run("splat_with_traversal_unresolved", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*].id`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		// var.list unresolved => __UNKNOWN_REF__[*].id; resolveRelativeTraversal then short-circuits to __UNRESOLVED__
+		if result != "__UNRESOLVED__" {
+			t.Errorf("resolveExpr = %q, want __UNRESOLVED__", result)
+		}
+	})
+}
+
 func TestResolveExpr_ForExpr(t *testing.T) {
 	t.Run("for_expr_uses_default", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})

@@ -69,6 +69,10 @@ func (r *recordingVisitor) VisitForExpr(_ *hclsyntax.ForExpr) (string, error) {
 	r.called = "ForExpr"
 	return r.called, nil
 }
+func (r *recordingVisitor) VisitSplatExpr(_ *hclsyntax.SplatExpr) (string, error) {
+	r.called = "SplatExpr"
+	return r.called, nil
+}
 func (r *recordingVisitor) VisitDefault(_ hclsyntax.Expression) (string, error) {
 	r.called = "Default"
 	return r.called, nil
@@ -102,6 +106,7 @@ func TestDispatch(t *testing.T) {
 		{"BinaryOp", `1 + 2`, "BinaryOp"},
 		{"UnaryOp", `-1`, "UnaryOp"},
 		{"ForExpr", `[for x in var.list : x]`, "ForExpr"},
+		{"SplatExpr", `var.list[*]`, "SplatExpr"},
 	}
 
 	for _, tt := range tests {
@@ -170,19 +175,13 @@ func TestDispatch_UnwrapsBeforeDispatch(t *testing.T) {
 }
 
 func TestDispatch_UnknownExprType(t *testing.T) {
-	expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
-	if diags.HasErrors() {
-		t.Fatalf("parse failed: %v", diags)
-	}
+	expr := &hclsyntax.AnonSymbolExpr{}
 	v := &recordingVisitor{}
-	got, err := Dispatch[string](expr, v)
-	if err != nil {
-		t.Fatalf("Dispatch error: %v", err)
-	}
+	got, _ := Dispatch[string](expr, v)
 	if got != "Default" {
-		t.Errorf("Dispatch returned %q, want %q", got, "Default")
+		t.Errorf("got %q, want Default", got)
 	}
 	if v.called != "Default" {
-		t.Errorf("visitor called %q, want %q", v.called, "Default")
+		t.Errorf("visitor called %q, want Default", v.called)
 	}
 }

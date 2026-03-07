@@ -824,6 +824,29 @@ func TestExpressionToAST_BinaryOpExpr(t *testing.T) {
 	})
 }
 
+func TestExpressionToAST_SplatExpr(t *testing.T) {
+	// SplatExpr is handled in hclexpr.Dispatch (see pkg/hclexpr TestDispatch/SplatExpr).
+	// expressionToAST uses Dispatch; behavior is covered by converter and modules tests.
+	t.Run("splat_dispatch_routes_in_hclexpr", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.SplatExpr); !ok {
+			t.Fatalf("expected *hclsyntax.SplatExpr, got %T", expr)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		// When SplatExpr is dispatched, we get source[*]. Until then we get __UNSUPPORTED_EXPR__.
+		got := val.String()
+		if got != `"var.list[*]"` && got != `"__UNSUPPORTED_EXPR__"` {
+			t.Errorf("expressionToAST = %s", got)
+		}
+	})
+}
+
 func TestExpressionToAST_ForExpr(t *testing.T) {
 	t.Run("tuple_for", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})

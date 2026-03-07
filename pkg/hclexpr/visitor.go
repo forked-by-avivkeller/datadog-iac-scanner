@@ -26,6 +26,7 @@ type Visitor[T any] interface {
 	VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (T, error)
 	VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (T, error)
 	VisitForExpr(e *hclsyntax.ForExpr) (T, error)
+	VisitSplatExpr(e *hclsyntax.SplatExpr) (T, error)
 	VisitDefault(e hclsyntax.Expression) (T, error)
 }
 
@@ -60,6 +61,8 @@ func Dispatch[T any](expr hclsyntax.Expression, v Visitor[T]) (T, error) {
 		return v.VisitUnaryOp(e)
 	case *hclsyntax.ForExpr:
 		return v.VisitForExpr(e)
+	case *hclsyntax.SplatExpr:
+		return v.VisitSplatExpr(e)
 	default:
 		return v.VisitDefault(expr)
 	}

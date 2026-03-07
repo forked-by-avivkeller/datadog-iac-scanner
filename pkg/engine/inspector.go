@@ -807,6 +807,9 @@ func (v *inspectorExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (ast.Value
 func (v *inspectorExprVisitor) VisitForExpr(e *hclsyntax.ForExpr) (ast.Value, error) {
 	return expressionToASTForExpr(e), nil
 }
+func (v *inspectorExprVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (ast.Value, error) {
+	return expressionToASTSplatExpr(e), nil
+}
 func (v *inspectorExprVisitor) VisitDefault(e hclsyntax.Expression) (ast.Value, error) {
 	return ast.String("__UNSUPPORTED_EXPR__"), nil
 }
@@ -963,6 +966,21 @@ func expressionToASTForExpr(e *hclsyntax.ForExpr) ast.Value {
 		b.WriteString("]")
 	}
 	return ast.String(b.String())
+}
+
+func expressionToASTSplatExpr(e *hclsyntax.SplatExpr) ast.Value {
+	sourceV, _ := expressionToAST(e.Source)
+	base := astValueToSimpleString(sourceV) + "[*]"
+	if e.Each != nil && e.Each != e.Source {
+		eachV, err := expressionToAST(e.Each)
+		if err == nil {
+			eachStr := astValueToSimpleString(eachV)
+			if eachStr == base || strings.HasPrefix(eachStr, base) {
+				return ast.String(eachStr)
+			}
+		}
+	}
+	return ast.String(base)
 }
 
 func scopeTraversalPath(t hcl.Traversal) string {

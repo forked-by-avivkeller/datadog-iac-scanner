@@ -283,6 +283,23 @@ func (v *resolveExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (string, err
 func (v *resolveExprVisitor) VisitForExpr(e *hclsyntax.ForExpr) (string, error) {
 	return resolveExprDefault(e), nil
 }
+func (v *resolveExprVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (string, error) {
+	sourceStr := resolveExpr(e.Source, v.locals, v.vars)
+	if strings.HasPrefix(sourceStr, "__") {
+		return unresolvedPlaceholder, nil
+	}
+	base := sourceStr + "[*]"
+	if e.Each != nil && e.Each != e.Source {
+		eachStr := resolveExpr(e.Each, v.locals, v.vars)
+		if strings.HasPrefix(eachStr, "__") {
+			return unresolvedPlaceholder, nil
+		}
+		if eachStr == base || strings.HasPrefix(eachStr, base) {
+			return eachStr, nil
+		}
+	}
+	return base, nil
+}
 func (v *resolveExprVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	return resolveExprDefault(e), nil
 }

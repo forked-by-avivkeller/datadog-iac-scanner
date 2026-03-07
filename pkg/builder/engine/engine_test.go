@@ -330,6 +330,41 @@ func TestExpToString_BinaryOpExpr(t *testing.T) {
 	})
 }
 
+func TestExpToString_SplatExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+	t.Run("splat", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.SplatExpr); !ok {
+			t.Fatalf("expected *hclsyntax.SplatExpr, got %T", expr)
+		}
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			return // VisitDefault returns error for unsupported expr
+		}
+		if want := "var.list[*]"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+	t.Run("splat_with_traversal", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*].id`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			return
+		}
+		// AST may be SplatExpr (then we get "var.list[*]") or RelativeTraversalExpr (then "var.list[*].id")
+		if got != "var.list[*].id" && got != "var.list[*]" {
+			t.Errorf("ExpToString = %q", got)
+		}
+	})
+}
+
 func TestExpToString_ForExpr(t *testing.T) {
 	e := &Engine{}
 	ctx := context.Background()

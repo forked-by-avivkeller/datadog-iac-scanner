@@ -267,6 +267,9 @@ func (v *converterExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (interface
 func (v *converterExprVisitor) VisitForExpr(e *hclsyntax.ForExpr) (interface{}, error) {
 	return v.c.tryEvalExpression(e)
 }
+func (v *converterExprVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
 func (v *converterExprVisitor) VisitDefault(e hclsyntax.Expression) (interface{}, error) {
 	return v.c.tryEvalExpression(e)
 }
@@ -405,6 +408,9 @@ func (v *converterStringPartVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (str
 }
 func (v *converterStringPartVisitor) VisitForExpr(e *hclsyntax.ForExpr) (string, error) {
 	return v.c.convertTemplateFor(e)
+}
+func (v *converterStringPartVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (string, error) {
+	return v.c.tryEvalToString(e)
 }
 func (v *converterStringPartVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	val, _ := e.Value(&hcl.EvalContext{Variables: v.c.inputVars})

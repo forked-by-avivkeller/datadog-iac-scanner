@@ -134,6 +134,20 @@ func (v *engineVisitor) VisitForExpr(e *hclsyntax.ForExpr) (string, error) {
 	}
 	return b.String(), nil
 }
+func (v *engineVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (string, error) {
+	sourceStr, err := v.e.ExpToString(v.ctx, e.Source)
+	if err != nil {
+		return "", err
+	}
+	base := sourceStr + "[*]"
+	if e.Each != nil && e.Each != e.Source {
+		eachStr, err := v.e.ExpToString(v.ctx, e.Each)
+		if err == nil && (eachStr == base || strings.HasPrefix(eachStr, base)) {
+			return eachStr, nil
+		}
+	}
+	return base, nil
+}
 func (v *engineVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	log := logger.FromContext(v.ctx)
 	log.Error().Msgf("can't convert expression %T to string", e)
