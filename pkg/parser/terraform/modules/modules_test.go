@@ -434,6 +434,22 @@ func TestResolveExpr_BinaryOpExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_ForExpr(t *testing.T) {
+	t.Run("for_expr_uses_default", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ForExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ForExpr, got %T", expr)
+		}
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		if result != "__UNRESOLVED__" {
+			t.Errorf("resolveExpr = %q, want __UNRESOLVED__", result)
+		}
+	})
+}
+
 func TestResolveExpr_UnaryOpExpr(t *testing.T) {
 	t.Run("negate", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte(`-1`), "test.hcl", hcl.Pos{Line: 1, Column: 1})

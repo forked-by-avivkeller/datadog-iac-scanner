@@ -81,6 +81,59 @@ func (v *engineVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (string, error) {
 	}
 	return hclexpr.UnaryOpSymbol(e.Op) + valStr, nil
 }
+func (v *engineVisitor) VisitForExpr(e *hclsyntax.ForExpr) (string, error) {
+	collStr, err := v.e.ExpToString(v.ctx, e.CollExpr)
+	if err != nil {
+		return "", err
+	}
+	valStr, err := v.e.ExpToString(v.ctx, e.ValExpr)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	if e.KeyExpr != nil {
+		keyStr, err := v.e.ExpToString(v.ctx, e.KeyExpr)
+		if err != nil {
+			return "", err
+		}
+		b.WriteString("{for ")
+		b.WriteString(e.KeyVar)
+		b.WriteString(", ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(keyStr)
+		b.WriteString(" => ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condStr, err := v.e.ExpToString(v.ctx, e.CondExpr)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(" if ")
+			b.WriteString(condStr)
+		}
+		b.WriteString("}")
+	} else {
+		b.WriteString("[for ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condStr, err := v.e.ExpToString(v.ctx, e.CondExpr)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(" if ")
+			b.WriteString(condStr)
+		}
+		b.WriteString("]")
+	}
+	return b.String(), nil
+}
 func (v *engineVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	log := logger.FromContext(v.ctx)
 	log.Error().Msgf("can't convert expression %T to string", e)

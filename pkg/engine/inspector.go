@@ -804,6 +804,9 @@ func (v *inspectorExprVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (ast.Val
 func (v *inspectorExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (ast.Value, error) {
 	return expressionToASTUnaryOpExpr(e), nil
 }
+func (v *inspectorExprVisitor) VisitForExpr(e *hclsyntax.ForExpr) (ast.Value, error) {
+	return expressionToASTForExpr(e), nil
+}
 func (v *inspectorExprVisitor) VisitDefault(e hclsyntax.Expression) (ast.Value, error) {
 	return ast.String("__UNSUPPORTED_EXPR__"), nil
 }
@@ -918,6 +921,48 @@ func expressionToASTBinaryOpExpr(e *hclsyntax.BinaryOpExpr) ast.Value {
 func expressionToASTUnaryOpExpr(e *hclsyntax.UnaryOpExpr) ast.Value {
 	valV, _ := expressionToAST(e.Val)
 	return ast.String(hclexpr.UnaryOpSymbol(e.Op) + astValueToSimpleString(valV))
+}
+
+func expressionToASTForExpr(e *hclsyntax.ForExpr) ast.Value {
+	collV, _ := expressionToAST(e.CollExpr)
+	valV, _ := expressionToAST(e.ValExpr)
+	collStr := astValueToSimpleString(collV)
+	valStr := astValueToSimpleString(valV)
+	var b strings.Builder
+	if e.KeyExpr != nil {
+		keyV, _ := expressionToAST(e.KeyExpr)
+		keyStr := astValueToSimpleString(keyV)
+		b.WriteString("{for ")
+		b.WriteString(e.KeyVar)
+		b.WriteString(", ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(keyStr)
+		b.WriteString(" => ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condV, _ := expressionToAST(e.CondExpr)
+			b.WriteString(" if ")
+			b.WriteString(astValueToSimpleString(condV))
+		}
+		b.WriteString("}")
+	} else {
+		b.WriteString("[for ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condV, _ := expressionToAST(e.CondExpr)
+			b.WriteString(" if ")
+			b.WriteString(astValueToSimpleString(condV))
+		}
+		b.WriteString("]")
+	}
+	return ast.String(b.String())
 }
 
 func scopeTraversalPath(t hcl.Traversal) string {

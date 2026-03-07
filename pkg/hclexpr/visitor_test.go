@@ -65,6 +65,10 @@ func (r *recordingVisitor) VisitUnaryOp(_ *hclsyntax.UnaryOpExpr) (string, error
 	r.called = "UnaryOp"
 	return r.called, nil
 }
+func (r *recordingVisitor) VisitForExpr(_ *hclsyntax.ForExpr) (string, error) {
+	r.called = "ForExpr"
+	return r.called, nil
+}
 func (r *recordingVisitor) VisitDefault(_ hclsyntax.Expression) (string, error) {
 	r.called = "Default"
 	return r.called, nil
@@ -97,6 +101,7 @@ func TestDispatch(t *testing.T) {
 		{"TemplateJoin", ``, "TemplateJoin"}, // no parseable src; expr built in loop below
 		{"BinaryOp", `1 + 2`, "BinaryOp"},
 		{"UnaryOp", `-1`, "UnaryOp"},
+		{"ForExpr", `[for x in var.list : x]`, "ForExpr"},
 	}
 
 	for _, tt := range tests {
@@ -165,11 +170,10 @@ func TestDispatch_UnwrapsBeforeDispatch(t *testing.T) {
 }
 
 func TestDispatch_UnknownExprType(t *testing.T) {
-	expr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+	expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		t.Fatalf("parse failed: %v", diags)
 	}
-
 	v := &recordingVisitor{}
 	got, err := Dispatch[string](expr, v)
 	if err != nil {

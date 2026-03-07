@@ -280,6 +280,9 @@ func (v *resolveExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (string, err
 	valStr := resolveExpr(e.Val, v.locals, v.vars)
 	return hclexpr.UnaryOpSymbol(e.Op) + valStr, nil
 }
+func (v *resolveExprVisitor) VisitForExpr(e *hclsyntax.ForExpr) (string, error) {
+	return resolveExprDefault(e), nil
+}
 func (v *resolveExprVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	return resolveExprDefault(e), nil
 }

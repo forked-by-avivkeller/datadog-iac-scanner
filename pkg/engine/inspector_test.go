@@ -824,6 +824,24 @@ func TestExpressionToAST_BinaryOpExpr(t *testing.T) {
 	})
 }
 
+func TestExpressionToAST_ForExpr(t *testing.T) {
+	t.Run("tuple_for", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"[for x in var.list : x]"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
 func TestExpressionToAST_UnaryOpExpr(t *testing.T) {
 	t.Run("negate", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte(`-1`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
