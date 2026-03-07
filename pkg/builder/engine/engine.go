@@ -63,6 +63,17 @@ func (v *engineVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (string, er
 func (v *engineVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (string, error) {
 	return "", fmt.Errorf("can't convert expression %T to string", e)
 }
+func (v *engineVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (string, error) {
+	lhs, err := v.e.ExpToString(v.ctx, e.LHS)
+	if err != nil {
+		return "", err
+	}
+	rhs, err := v.e.ExpToString(v.ctx, e.RHS)
+	if err != nil {
+		return "", err
+	}
+	return lhs + " " + hclexpr.BinaryOpSymbol(e.Op) + " " + rhs, nil
+}
 func (v *engineVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	log := logger.FromContext(v.ctx)
 	log.Error().Msgf("can't convert expression %T to string", e)

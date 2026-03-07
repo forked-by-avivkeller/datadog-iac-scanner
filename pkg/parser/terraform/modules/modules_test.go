@@ -405,6 +405,35 @@ func TestDetectModuleSourceTypeWithScope(t *testing.T) {
 	}
 }
 
+func TestResolveExpr_BinaryOpExpr(t *testing.T) {
+	t.Run("arithmetic_concatenates_resolved_sides", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`1 + 2`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.BinaryOpExpr); !ok {
+			t.Fatalf("expected *hclsyntax.BinaryOpExpr, got %T", expr)
+		}
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		// Number literals resolve to __NON_STRING_LITERAL__ so we get op between them
+		want := "__NON_STRING_LITERAL__ + __NON_STRING_LITERAL__"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+	t.Run("comparison_with_vars", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.a == var.b`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		result := resolveExpr(expr, map[string]string{}, map[string]string{"a": "x", "b": "y"})
+		want := "x == y"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
 func TestResolveExpr_RelativeTraversalExpr(t *testing.T) {
 	t.Run("function_call_source_with_traversal", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression(

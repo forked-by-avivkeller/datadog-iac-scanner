@@ -57,6 +57,10 @@ func (r *recordingVisitor) VisitTemplateJoin(_ *hclsyntax.TemplateJoinExpr) (str
 	r.called = "TemplateJoin"
 	return r.called, nil
 }
+func (r *recordingVisitor) VisitBinaryOp(_ *hclsyntax.BinaryOpExpr) (string, error) {
+	r.called = "BinaryOp"
+	return r.called, nil
+}
 func (r *recordingVisitor) VisitDefault(_ hclsyntax.Expression) (string, error) {
 	r.called = "Default"
 	return r.called, nil
@@ -87,6 +91,7 @@ func TestDispatch(t *testing.T) {
 		{"TupleCons", `[1, 2]`, "TupleCons"},
 		{"ObjectCons", `{a = 1}`, "ObjectCons"},
 		{"TemplateJoin", ``, "TemplateJoin"}, // no parseable src; expr built in loop below
+		{"BinaryOp", `1 + 2`, "BinaryOp"},
 	}
 
 	for _, tt := range tests {

@@ -791,6 +791,39 @@ func TestExpressionToAST_FunctionCallExpr(t *testing.T) {
 	})
 }
 
+func TestExpressionToAST_BinaryOpExpr(t *testing.T) {
+	t.Run("arithmetic", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`1 + 2`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"1 + 2"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+	t.Run("comparison", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.count > 0`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"var.count > 0"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
 func TestExpressionToAST_ScopeTraversalWithIndex(t *testing.T) {
 	t.Run("numeric_index_uses_brackets", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte("var.list[0]"), "test.hcl", hcl.Pos{Line: 1, Column: 1})

@@ -798,6 +798,9 @@ func (v *inspectorExprVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (ast
 func (v *inspectorExprVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (ast.Value, error) {
 	return ast.String("__UNSUPPORTED_EXPR__"), nil
 }
+func (v *inspectorExprVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (ast.Value, error) {
+	return expressionToASTBinaryOpExpr(e), nil
+}
 func (v *inspectorExprVisitor) VisitDefault(e hclsyntax.Expression) (ast.Value, error) {
 	return ast.String("__UNSUPPORTED_EXPR__"), nil
 }
@@ -901,6 +904,12 @@ func expressionToASTFunctionCallExpr(e *hclsyntax.FunctionCallExpr) ast.Value {
 		args = append(args, astValueToSimpleString(v))
 	}
 	return ast.String(e.Name + "(" + strings.Join(args, ", ") + ")")
+}
+
+func expressionToASTBinaryOpExpr(e *hclsyntax.BinaryOpExpr) ast.Value {
+	lhsV, _ := expressionToAST(e.LHS)
+	rhsV, _ := expressionToAST(e.RHS)
+	return ast.String(astValueToSimpleString(lhsV) + " " + hclexpr.BinaryOpSymbol(e.Op) + " " + astValueToSimpleString(rhsV))
 }
 
 func scopeTraversalPath(t hcl.Traversal) string {

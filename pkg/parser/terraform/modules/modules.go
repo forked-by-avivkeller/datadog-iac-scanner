@@ -271,6 +271,11 @@ func (v *resolveExprVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (strin
 func (v *resolveExprVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (string, error) {
 	return resolveExprDefault(e), nil
 }
+func (v *resolveExprVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (string, error) {
+	lhs := resolveExpr(e.LHS, v.locals, v.vars)
+	rhs := resolveExpr(e.RHS, v.locals, v.vars)
+	return lhs + " " + hclexpr.BinaryOpSymbol(e.Op) + " " + rhs, nil
+}
 func (v *resolveExprVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	return resolveExprDefault(e), nil
 }
