@@ -1,0 +1,164 @@
+/*
+ * Unless explicitly stated otherwise all files in this repository are licensed under the Apache-2.0 License.
+ *
+ * This product includes software developed at Datadog (https://www.datadoghq.com)  Copyright 2024 Datadog, Inc.
+ */
+package hclexpr
+
+import (
+	"testing"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+)
+
+// recordingVisitor records which Visit* method was called.
+type recordingVisitor struct {
+	called string
+}
+
+func (r *recordingVisitor) VisitLiteralValue(_ *hclsyntax.LiteralValueExpr) (string, error) {
+	r.called = "LiteralValue"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitTemplateExpr(_ *hclsyntax.TemplateExpr) (string, error) {
+	r.called = "TemplateExpr"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitScopeTraversal(_ *hclsyntax.ScopeTraversalExpr) (string, error) {
+	r.called = "ScopeTraversal"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitIndexExpr(_ *hclsyntax.IndexExpr) (string, error) {
+	r.called = "IndexExpr"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitRelativeTraversal(_ *hclsyntax.RelativeTraversalExpr) (string, error) {
+	r.called = "RelativeTraversal"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitFunctionCall(_ *hclsyntax.FunctionCallExpr) (string, error) {
+	r.called = "FunctionCall"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitConditional(_ *hclsyntax.ConditionalExpr) (string, error) {
+	r.called = "Conditional"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitTupleCons(_ *hclsyntax.TupleConsExpr) (string, error) {
+	r.called = "TupleCons"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitObjectCons(_ *hclsyntax.ObjectConsExpr) (string, error) {
+	r.called = "ObjectCons"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitTemplateJoin(_ *hclsyntax.TemplateJoinExpr) (string, error) {
+	r.called = "TemplateJoin"
+	return r.called, nil
+}
+func (r *recordingVisitor) VisitDefault(_ hclsyntax.Expression) (string, error) {
+	r.called = "Default"
+	return r.called, nil
+}
+
+func TestDispatch(t *testing.T) {
+	parse := func(t *testing.T, src string) hclsyntax.Expression {
+		t.Helper()
+		expr, diags := hclsyntax.ParseExpression([]byte(src), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse %q failed: %v", src, diags)
+		}
+		return expr
+	}
+
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{"LiteralValue", `42`, "LiteralValue"},
+		{"ScopeTraversal", `var.x`, "ScopeTraversal"},
+		{"TemplateExpr", `"hello ${var.x} world"`, "TemplateExpr"},
+		{"IndexExpr", `list[var.i]`, "IndexExpr"},
+		{"RelativeTraversal", `list[var.i].name`, "RelativeTraversal"},
+		{"FunctionCall", `upper("x")`, "FunctionCall"},
+		{"Conditional", `true ? 1 : 2`, "Conditional"},
+		{"TupleCons", `[1, 2]`, "TupleCons"},
+		{"ObjectCons", `{a = 1}`, "ObjectCons"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expr := parse(t, tt.src)
+			v := &recordingVisitor{}
+			got, err := Dispatch[string](expr, v)
+			if err != nil {
+				t.Fatalf("Dispatch error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("Dispatch returned %q, want %q", got, tt.want)
+			}
+			if v.called != tt.want {
+				t.Errorf("visitor called %q, want %q", v.called, tt.want)
+			}
+		})
+	}
+}
+
+func TestDispatch_UnwrapsBeforeDispatch(t *testing.T) {
+	parse := func(t *testing.T, src string) hclsyntax.Expression {
+		t.Helper()
+		expr, diags := hclsyntax.ParseExpression([]byte(src), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse %q failed: %v", src, diags)
+		}
+		return expr
+	}
+
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{"TemplateWrapExpr_unwraps", `"${var.x}"`, "ScopeTraversal"},
+		{"ParenthesesExpr_unwraps", `(var.x)`, "ScopeTraversal"},
+		{"nested_unwrap", `"${(var.x)}"`, "ScopeTraversal"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expr := parse(t, tt.src)
+			v := &recordingVisitor{}
+			got, err := Dispatch[string](expr, v)
+			if err != nil {
+				t.Fatalf("Dispatch error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("Dispatch returned %q, want %q", got, tt.want)
+			}
+			if v.called != tt.want {
+				t.Errorf("visitor called %q, want %q", v.called, tt.want)
+			}
+		})
+	}
+}
+
+func TestDispatch_UnknownExprType(t *testing.T) {
+	expr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		t.Fatalf("parse failed: %v", diags)
+	}
+
+	v := &recordingVisitor{}
+	got, err := Dispatch[string](expr, v)
+	if err != nil {
+		t.Fatalf("Dispatch error: %v", err)
+	}
+	if got != "Default" {
+		t.Errorf("Dispatch returned %q, want %q", got, "Default")
+	}
+	if v.called != "Default" {
+		t.Errorf("visitor called %q, want %q", v.called, "Default")
+	}
+}
