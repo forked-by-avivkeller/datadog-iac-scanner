@@ -74,6 +74,13 @@ func (v *engineVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (string, error)
 	}
 	return lhs + " " + hclexpr.BinaryOpSymbol(e.Op) + " " + rhs, nil
 }
+func (v *engineVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (string, error) {
+	valStr, err := v.e.ExpToString(v.ctx, e.Val)
+	if err != nil {
+		return "", err
+	}
+	return hclexpr.UnaryOpSymbol(e.Op) + valStr, nil
+}
 func (v *engineVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	log := logger.FromContext(v.ctx)
 	log.Error().Msgf("can't convert expression %T to string", e)

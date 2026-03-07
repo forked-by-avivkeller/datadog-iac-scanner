@@ -55,8 +55,37 @@ func TestBinaryOpSymbol(t *testing.T) {
 	}
 }
 
+func TestUnaryOpSymbol(t *testing.T) {
+	tests := []struct {
+		src  string
+		want string
+	}{
+		{"-1", "-"},
+		{"!true", "!"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			expr := parseExpr(t, tt.src)
+			un, ok := expr.(*hclsyntax.UnaryOpExpr)
+			if !ok {
+				t.Fatalf("expected *UnaryOpExpr, got %T", expr)
+			}
+			got := UnaryOpSymbol(un.Op)
+			if got != tt.want {
+				t.Errorf("UnaryOpSymbol = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBinaryOpSymbol_nil(t *testing.T) {
 	if got := BinaryOpSymbol(nil); got != "?" {
 		t.Errorf("BinaryOpSymbol(nil) = %q, want ?", got)
+	}
+}
+
+func TestUnaryOpSymbol_nil(t *testing.T) {
+	if got := UnaryOpSymbol(nil); got != "?" {
+		t.Errorf("UnaryOpSymbol(nil) = %q, want ?", got)
 	}
 }

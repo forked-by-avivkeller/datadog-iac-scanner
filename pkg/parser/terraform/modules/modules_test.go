@@ -434,6 +434,34 @@ func TestResolveExpr_BinaryOpExpr(t *testing.T) {
 	})
 }
 
+func TestResolveExpr_UnaryOpExpr(t *testing.T) {
+	t.Run("negate", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`-1`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.UnaryOpExpr); !ok {
+			t.Fatalf("expected *hclsyntax.UnaryOpExpr, got %T", expr)
+		}
+		result := resolveExpr(expr, map[string]string{}, map[string]string{})
+		want := "-__NON_STRING_LITERAL__"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+	t.Run("logical_not_with_var", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`!var.flag`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		result := resolveExpr(expr, map[string]string{}, map[string]string{"flag": "true"})
+		want := "!true"
+		if result != want {
+			t.Errorf("resolveExpr = %q, want %q", result, want)
+		}
+	})
+}
+
 func TestResolveExpr_RelativeTraversalExpr(t *testing.T) {
 	t.Run("function_call_source_with_traversal", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression(

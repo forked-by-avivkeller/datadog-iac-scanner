@@ -276,6 +276,10 @@ func (v *resolveExprVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (string, e
 	rhs := resolveExpr(e.RHS, v.locals, v.vars)
 	return lhs + " " + hclexpr.BinaryOpSymbol(e.Op) + " " + rhs, nil
 }
+func (v *resolveExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (string, error) {
+	valStr := resolveExpr(e.Val, v.locals, v.vars)
+	return hclexpr.UnaryOpSymbol(e.Op) + valStr, nil
+}
 func (v *resolveExprVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	return resolveExprDefault(e), nil
 }

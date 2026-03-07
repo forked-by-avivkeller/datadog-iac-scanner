@@ -24,6 +24,7 @@ type Visitor[T any] interface {
 	VisitObjectCons(e *hclsyntax.ObjectConsExpr) (T, error)
 	VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (T, error)
 	VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (T, error)
+	VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (T, error)
 	VisitDefault(e hclsyntax.Expression) (T, error)
 }
 
@@ -54,6 +55,8 @@ func Dispatch[T any](expr hclsyntax.Expression, v Visitor[T]) (T, error) {
 		return v.VisitTemplateJoin(e)
 	case *hclsyntax.BinaryOpExpr:
 		return v.VisitBinaryOp(e)
+	case *hclsyntax.UnaryOpExpr:
+		return v.VisitUnaryOp(e)
 	default:
 		return v.VisitDefault(expr)
 	}

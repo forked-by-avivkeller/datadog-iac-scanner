@@ -45,3 +45,18 @@ func BinaryOpSymbol(op *hclsyntax.Operation) string {
 		return "?"
 	}
 }
+
+// UnaryOpSymbol returns the HCL operator symbol for a unary operation (e.g. "-", "!").
+func UnaryOpSymbol(op *hclsyntax.Operation) string {
+	if op == nil {
+		return "?"
+	}
+	switch op {
+	case hclsyntax.OpLogicalNot:
+		return "!"
+	case hclsyntax.OpNegate:
+		return "-"
+	default:
+		return "?"
+	}
+}

@@ -61,6 +61,10 @@ func (r *recordingVisitor) VisitBinaryOp(_ *hclsyntax.BinaryOpExpr) (string, err
 	r.called = "BinaryOp"
 	return r.called, nil
 }
+func (r *recordingVisitor) VisitUnaryOp(_ *hclsyntax.UnaryOpExpr) (string, error) {
+	r.called = "UnaryOp"
+	return r.called, nil
+}
 func (r *recordingVisitor) VisitDefault(_ hclsyntax.Expression) (string, error) {
 	r.called = "Default"
 	return r.called, nil
@@ -92,6 +96,7 @@ func TestDispatch(t *testing.T) {
 		{"ObjectCons", `{a = 1}`, "ObjectCons"},
 		{"TemplateJoin", ``, "TemplateJoin"}, // no parseable src; expr built in loop below
 		{"BinaryOp", `1 + 2`, "BinaryOp"},
+		{"UnaryOp", `-1`, "UnaryOp"},
 	}
 
 	for _, tt := range tests {

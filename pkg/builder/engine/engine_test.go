@@ -330,6 +330,40 @@ func TestExpToString_BinaryOpExpr(t *testing.T) {
 	})
 }
 
+func TestExpToString_UnaryOpExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+	t.Run("negate", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`-1`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.UnaryOpExpr); !ok {
+			t.Fatalf("expected *hclsyntax.UnaryOpExpr, got %T", expr)
+		}
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "-1"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+	t.Run("logical_not", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`!var.enabled`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "!var.enabled"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestExpToString_FunctionCallExpr(t *testing.T) {
 	e := &Engine{}
 	ctx := context.Background()
