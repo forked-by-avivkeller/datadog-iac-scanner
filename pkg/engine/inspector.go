@@ -771,7 +771,7 @@ func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) {
 	case *hclsyntax.ParenthesesExpr:
 		return expressionToAST(e.Expression)
 	case *hclsyntax.ScopeTraversalExpr:
-		return ast.String(e.Traversal.RootName()), nil
+		return ast.String(scopeTraversalPath(e.Traversal)), nil
 	case *hclsyntax.TupleConsExpr:
 		return expressionToASTTupleConsExpr(e), nil
 	case *hclsyntax.ObjectConsExpr:
@@ -890,6 +890,26 @@ func expressionToASTFunctionCallExpr(e *hclsyntax.FunctionCallExpr) ast.Value {
 		args = append(args, astValueToSimpleString(v))
 	}
 	return ast.String(e.Name + "(" + strings.Join(args, ", ") + ")")
+}
+
+func scopeTraversalPath(t hcl.Traversal) string {
+	items := make([]string, 0, len(t))
+	for _, part := range t {
+		switch step := part.(type) {
+		case hcl.TraverseAttr:
+			items = append(items, step.Name)
+		case hcl.TraverseRoot:
+			items = append(items, step.Name)
+		case hcl.TraverseIndex:
+			switch step.Key.Type() {
+			case cty.Number:
+				items = append(items, step.Key.AsBigFloat().String())
+			case cty.String:
+				items = append(items, step.Key.AsString())
+			}
+		}
+	}
+	return strings.Join(items, ".")
 }
 
 func astValueToSimpleString(v ast.Value) string {

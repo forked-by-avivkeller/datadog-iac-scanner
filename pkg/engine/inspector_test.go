@@ -619,9 +619,7 @@ func TestExpressionToAST_RelativeTraversalExpr(t *testing.T) {
 		}
 
 		got := val.String()
-		// IndexExpr resolves: Collection RootName="list", Key RootName="var" → "list[var]"
-		// Relative traversal appends ".name"
-		want := `"list[var].name"`
+		want := `"list[var.i].name"`
 		if got != want {
 			t.Errorf("expressionToAST = %s, want %s", got, want)
 		}
@@ -642,7 +640,7 @@ func TestExpressionToAST_RelativeTraversalExpr(t *testing.T) {
 		}
 
 		got := val.String()
-		want := `"list[var].a.b"`
+		want := `"list[var.i].a.b"`
 		if got != want {
 			t.Errorf("expressionToAST = %s, want %s", got, want)
 		}
@@ -660,8 +658,7 @@ func TestExpressionToAST_RelativeTraversalExpr(t *testing.T) {
 		}
 
 		got := val.String()
-		// FunctionCallExpr now resolves: tostring(var) where "var" is the root name
-		want := `"tostring(var).attr"`
+		want := `"tostring(var.x).attr"`
 		if got != want {
 			t.Errorf("expressionToAST = %s, want %s", got, want)
 		}
@@ -683,7 +680,7 @@ func TestExpressionToAST_ParenthesesExpr(t *testing.T) {
 			t.Fatalf("expressionToAST error: %v", err)
 		}
 		got := val.String()
-		want := `"var"`
+		want := `"var.x"`
 		if got != want {
 			t.Errorf("expressionToAST = %s, want %s", got, want)
 		}
@@ -766,8 +763,7 @@ func TestExpressionToAST_FunctionCallExpr(t *testing.T) {
 		}
 
 		got := val.String()
-		// ScopeTraversalExpr returns root name only
-		want := `"format(%s, var)"`
+		want := `"format(%s, var.name)"`
 		if got != want {
 			t.Errorf("expressionToAST = %s, want %s", got, want)
 		}
