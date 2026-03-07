@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/datadog-iac-scanner/pkg/detector/terraform"
 	"github.com/DataDog/datadog-iac-scanner/pkg/engine/source"
 	"github.com/DataDog/datadog-iac-scanner/pkg/featureflags"
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
 	tfmodules "github.com/DataDog/datadog-iac-scanner/pkg/parser/terraform/modules"
@@ -761,23 +762,18 @@ func parseJsonencodeHCL(ctx context.Context, input string) (ast.Value, error) {
 
 // expressionToAST converts HCL expression to OPA ast.Value
 func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) {
+	expr = hclexpr.Unwrap(expr)
 	switch e := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
 		return literalToAst(e)
 	case *hclsyntax.TemplateExpr:
 		return expressionToASTTemplateExpr(e), nil
-	case *hclsyntax.TemplateWrapExpr:
-		return expressionToAST(e.Wrapped)
-	case *hclsyntax.ParenthesesExpr:
-		return expressionToAST(e.Expression)
 	case *hclsyntax.ScopeTraversalExpr:
 		return ast.String(scopeTraversalPath(e.Traversal)), nil
 	case *hclsyntax.TupleConsExpr:
 		return expressionToASTTupleConsExpr(e), nil
 	case *hclsyntax.ObjectConsExpr:
 		return expressionToASTObjectConsExpr(e), nil
-	case *hclsyntax.ObjectConsKeyExpr:
-		return expressionToAST(e.UnwrapExpression())
 	case *hclsyntax.IndexExpr:
 		return expressionToASTIndexExpr(e), nil
 	case *hclsyntax.RelativeTraversalExpr:
@@ -946,12 +942,7 @@ func literalToAst(expr *hclsyntax.LiteralValueExpr) (ast.Value, error) {
 }
 
 func normalizeKeyExpr(expr hclsyntax.Expression) hclsyntax.Expression {
-	switch e := expr.(type) {
-	case *hclsyntax.TemplateWrapExpr:
-		return normalizeKeyExpr(e.Wrapped)
-	case *hclsyntax.ParenthesesExpr:
-		return normalizeKeyExpr(e.Expression)
-	}
+	expr = hclexpr.Unwrap(expr)
 
 	v := reflect.ValueOf(expr)
 	if v.Kind() == reflect.Ptr && !v.IsNil() {

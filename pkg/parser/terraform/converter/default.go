@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
 	"github.com/DataDog/datadog-iac-scanner/pkg/parser/terraform/functions"
@@ -204,16 +205,12 @@ func (c *converter) convertBlock(ctx context.Context, block *hclsyntax.Block, ou
 }
 
 func (c *converter) convertExpression(expr hclsyntax.Expression) (interface{}, error) {
-	// assume it is hcl syntax (because, um, it is)
+	expr = hclexpr.Unwrap(expr)
 	switch value := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
 		return ctyjson.SimpleJSONValue{Value: value.Val}, nil
 	case *hclsyntax.TemplateExpr:
 		return c.convertTemplate(value)
-	case *hclsyntax.TemplateWrapExpr:
-		return c.convertExpression(value.Wrapped)
-	case *hclsyntax.ParenthesesExpr:
-		return c.convertExpression(value.Expression)
 	case *hclsyntax.TupleConsExpr:
 		list := make([]interface{}, 0)
 		for _, ex := range value.Exprs {
@@ -328,6 +325,7 @@ func (c *converter) convertTemplate(t *hclsyntax.TemplateExpr) (string, error) {
 }
 
 func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error) {
+	expr = hclexpr.Unwrap(expr)
 	switch v := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
 		s, err := ctyconvert.Convert(v.Val, cty.String)
@@ -337,14 +335,10 @@ func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error)
 		return s.AsString(), nil
 	case *hclsyntax.TemplateExpr:
 		return c.convertTemplate(v)
-	case *hclsyntax.TemplateWrapExpr:
-		return c.convertStringPart(v.Wrapped)
 	case *hclsyntax.ConditionalExpr:
 		return c.convertTemplateConditional(v)
 	case *hclsyntax.TemplateJoinExpr:
 		return c.convertTemplateFor(v.Tuple.(*hclsyntax.ForExpr))
-	case *hclsyntax.ParenthesesExpr:
-		return c.convertStringPart(v.Expression)
 	case *hclsyntax.IndexExpr, *hclsyntax.RelativeTraversalExpr, *hclsyntax.FunctionCallExpr:
 		return c.tryEvalToString(expr)
 	default:

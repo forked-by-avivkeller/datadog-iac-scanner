@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -24,17 +25,12 @@ type Engine struct {
 // ExpToString converts an expression into a string
 func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (string, error) {
 	contextLogger := logger.FromContext(ctx)
+	expr = hclexpr.Unwrap(expr)
 	switch t := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
 		return e.expToStringLiteralValue(t)
 	case *hclsyntax.TemplateExpr:
 		return e.expToStringTemplateExpr(ctx, t)
-	case *hclsyntax.TemplateWrapExpr:
-		return e.ExpToString(ctx, t.Wrapped)
-	case *hclsyntax.ParenthesesExpr:
-		return e.ExpToString(ctx, t.Expression)
-	case *hclsyntax.ObjectConsKeyExpr:
-		return e.ExpToString(ctx, t.Wrapped)
 	case *hclsyntax.ScopeTraversalExpr:
 		return e.expToStringScopeTraversal(t), nil
 	case *hclsyntax.IndexExpr:

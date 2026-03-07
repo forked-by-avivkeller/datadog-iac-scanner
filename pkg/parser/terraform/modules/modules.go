@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
 	"github.com/hashicorp/hcl/v2"
@@ -215,6 +216,7 @@ func getFileContent(file model.FileMetadata) string {
 
 // resolveExpr evaluates HCL expressions using known locals and vars
 func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) string {
+	expr = hclexpr.Unwrap(expr)
 	switch e := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
 		return resolveLiteralValueExpr(e)
@@ -225,17 +227,11 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 	case *hclsyntax.ScopeTraversalExpr:
 		return resolveScopeTraversal(e, locals, vars)
 
-	case *hclsyntax.TemplateWrapExpr:
-		return resolveExpr(e.Wrapped, locals, vars)
-
 	case *hclsyntax.FunctionCallExpr:
 		return resolveFunctionCall(e, locals, vars)
 
 	case *hclsyntax.RelativeTraversalExpr:
 		return resolveRelativeTraversalExpr(e, locals, vars)
-
-	case *hclsyntax.ParenthesesExpr:
-		return resolveExpr(e.Expression, locals, vars)
 
 	case *hclsyntax.ConditionalExpr:
 		condStr := resolveExpr(e.Condition, locals, vars)
@@ -317,7 +313,13 @@ func resolveExprDefault(expr hclsyntax.Expression) string {
 
 func resolveScopeTraversal(expr *hclsyntax.ScopeTraversalExpr, locals, vars map[string]string) string {
 	traversal := expr.Traversal
-	if len(traversal) < 2 {
+	if len(traversal) == 0 {
+		return "__INVALID_TRAVERSAL__"
+	}
+	if len(traversal) == 1 {
+		if root, ok := traversal[0].(hcl.TraverseRoot); ok {
+			return root.Name
+		}
 		return "__INVALID_TRAVERSAL__"
 	}
 
