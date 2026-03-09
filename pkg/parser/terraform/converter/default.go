@@ -228,17 +228,8 @@ func (c *converter) convertExpression(expr hclsyntax.Expression) (interface{}, e
 		return c.objectConsExpr(value)
 	case *hclsyntax.FunctionCallExpr:
 		return c.evalFunction(expr)
-	case *hclsyntax.RelativeTraversalExpr:
-		c.inputVarsMu.RLock()
-		expressionEvaluated, _ := expr.Value(&hcl.EvalContext{
-			Variables: c.inputVars,
-			Functions: functions.TerraformFuncs,
-		})
-		c.inputVarsMu.RUnlock()
-		if !checkDynamicKnownTypes(expressionEvaluated) {
-			return ctyjson.SimpleJSONValue{Value: expressionEvaluated}, nil
-		}
-		return c.wrapExpr(expr)
+	case *hclsyntax.RelativeTraversalExpr, *hclsyntax.IndexExpr:
+		return c.tryEvalExpression(expr)
 	case *hclsyntax.ConditionalExpr:
 		c.inputVarsMu.RLock()
 		expressionEvaluated, err := expr.Value(&hcl.EvalContext{
@@ -251,17 +242,7 @@ func (c *converter) convertExpression(expr hclsyntax.Expression) (interface{}, e
 		}
 		return ctyjson.SimpleJSONValue{Value: expressionEvaluated}, nil
 	default:
-		// try to evaluate with variables and functions
-		c.inputVarsMu.RLock()
-		valueConverted, _ := expr.Value(&hcl.EvalContext{
-			Variables: c.inputVars,
-			Functions: functions.TerraformFuncs,
-		})
-		c.inputVarsMu.RUnlock()
-		if !checkDynamicKnownTypes(valueConverted) {
-			return ctyjson.SimpleJSONValue{Value: valueConverted}, nil
-		}
-		return c.wrapExpr(expr)
+		return c.tryEvalExpression(expr)
 	}
 }
 
@@ -366,19 +347,10 @@ func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error)
 		return c.convertTemplateFor(v.Tuple.(*hclsyntax.ForExpr))
 	case *hclsyntax.ParenthesesExpr:
 		return c.convertStringPart(v.Expression)
-	case *hclsyntax.RelativeTraversalExpr, *hclsyntax.FunctionCallExpr:
-		c.inputVarsMu.RLock()
-		valueConverted, _ := expr.Value(&hcl.EvalContext{
-			Variables: c.inputVars,
-			Functions: functions.TerraformFuncs,
-		})
-		c.inputVarsMu.RUnlock()
-		if valueConverted.Type().FriendlyName() == ctyFriendlyNameString {
-			return valueConverted.AsString(), nil
-		}
-		return c.wrapExpr(expr)
+	case *hclsyntax.IndexExpr, *hclsyntax.RelativeTraversalExpr, *hclsyntax.FunctionCallExpr:
+		return c.tryEvalToString(expr)
 	default:
-		// try to evaluate with variables
+		// try to evaluate with variables only (no functions)
 		c.inputVarsMu.RLock()
 		valueConverted, _ := expr.Value(&hcl.EvalContext{
 			Variables: c.inputVars,
@@ -387,7 +359,6 @@ func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error)
 		if valueConverted.Type().FriendlyName() == ctyFriendlyNameString {
 			return valueConverted.AsString(), nil
 		}
-		// treating as an embedded expression
 		return c.wrapExpr(expr)
 	}
 }
@@ -443,6 +414,32 @@ func (c *converter) convertTemplateFor(expr *hclsyntax.ForExpr) (string, error) 
 	builder.Reset()
 	builder = nil
 	return s, nil
+}
+
+func (c *converter) tryEvalExpression(expr hclsyntax.Expression) (interface{}, error) {
+	c.inputVarsMu.RLock()
+	val, _ := expr.Value(&hcl.EvalContext{
+		Variables: c.inputVars,
+		Functions: functions.TerraformFuncs,
+	})
+	c.inputVarsMu.RUnlock()
+	if !checkDynamicKnownTypes(val) {
+		return ctyjson.SimpleJSONValue{Value: val}, nil
+	}
+	return c.wrapExpr(expr)
+}
+
+func (c *converter) tryEvalToString(expr hclsyntax.Expression) (string, error) {
+	c.inputVarsMu.RLock()
+	val, _ := expr.Value(&hcl.EvalContext{
+		Variables: c.inputVars,
+		Functions: functions.TerraformFuncs,
+	})
+	c.inputVarsMu.RUnlock()
+	if val.Type().FriendlyName() == ctyFriendlyNameString {
+		return val.AsString(), nil
+	}
+	return c.wrapExpr(expr)
 }
 
 func (c *converter) wrapExpr(expr hclsyntax.Expression) (string, error) {

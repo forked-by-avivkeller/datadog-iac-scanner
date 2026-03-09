@@ -8,6 +8,7 @@ package engine
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -169,6 +170,118 @@ func TestExpToString_RelativeTraversalExpr(t *testing.T) {
 	})
 }
 
+func TestExpToString_ParenthesesExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("unwraps_to_inner_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("(var.x)"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ParenthesesExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ParenthesesExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "var.x"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("nested_parentheses_unwrap", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("((var.a))"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		if want := "var.a"; got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestExpToString_TupleConsExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	expr, diags := hclsyntax.ParseExpression([]byte(`[var.a, "b", 1]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		t.Fatalf("parse failed: %v", diags)
+	}
+	if _, ok := expr.(*hclsyntax.TupleConsExpr); !ok {
+		t.Fatalf("expected *hclsyntax.TupleConsExpr, got %T", expr)
+	}
+
+	got, err := e.ExpToString(ctx, expr)
+	if err != nil {
+		t.Fatalf("ExpToString error: %v", err)
+	}
+	want := "[var.a, b, 1]"
+	if got != want {
+		t.Errorf("ExpToString = %q, want %q", got, want)
+	}
+}
+
+func TestExpToString_ObjectConsExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	expr, diags := hclsyntax.ParseExpression([]byte(`{a = var.x, b = "y"}`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		t.Fatalf("parse failed: %v", diags)
+	}
+	if _, ok := expr.(*hclsyntax.ObjectConsExpr); !ok {
+		t.Fatalf("expected *hclsyntax.ObjectConsExpr, got %T", expr)
+	}
+
+	got, err := e.ExpToString(ctx, expr)
+	if err != nil {
+		t.Fatalf("ExpToString error: %v", err)
+	}
+	// Key order may vary; check it contains both key-value pairs
+	if !strings.Contains(got, "a: var.x") {
+		t.Errorf("ExpToString = %q, expected to contain a: var.x", got)
+	}
+	if !strings.Contains(got, "b: y") {
+		t.Errorf("ExpToString = %q, expected to contain b: y", got)
+	}
+	if !strings.HasPrefix(got, "{") || !strings.HasSuffix(got, "}") {
+		t.Errorf("ExpToString = %q, expected to be wrapped in {}", got)
+	}
+}
+
+func TestExpToString_ConditionalExpr(t *testing.T) {
+	e := &Engine{}
+	ctx := context.Background()
+
+	t.Run("returns_condition_true_false_string", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.enabled ? "yes" : "no"`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ConditionalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ConditionalExpr, got %T", expr)
+		}
+
+		got, err := e.ExpToString(ctx, expr)
+		if err != nil {
+			t.Fatalf("ExpToString error: %v", err)
+		}
+		want := "var.enabled ? yes : no"
+		if got != want {
+			t.Errorf("ExpToString = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestExpToString_FunctionCallExpr(t *testing.T) {
 	e := &Engine{}
 	ctx := context.Background()
@@ -246,7 +359,8 @@ func TestExpToString_FunctionCallExpr(t *testing.T) {
 	})
 
 	t.Run("unsupported_arg_propagates_error", func(t *testing.T) {
-		expr, diags := hclsyntax.ParseExpression([]byte(`upper(true ? "a" : "b")`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		// Use for expression as argument; ForExpr is not handled by ExpToString
+		expr, diags := hclsyntax.ParseExpression([]byte(`upper([for i in [1,2] : i])`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
 		if diags.HasErrors() {
 			t.Fatalf("parse failed: %v", diags)
 		}

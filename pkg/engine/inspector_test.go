@@ -668,6 +668,67 @@ func TestExpressionToAST_RelativeTraversalExpr(t *testing.T) {
 	})
 }
 
+func TestExpressionToAST_ParenthesesExpr(t *testing.T) {
+	t.Run("unwraps_to_inner_expression", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("(var.x)"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ParenthesesExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ParenthesesExpr, got %T", expr)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"var"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+
+	t.Run("nested_parentheses_unwrap", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte("((1))"), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `1`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
+func TestExpressionToAST_ConditionalExpr(t *testing.T) {
+	t.Run("returns_condition_true_false_string", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`true ? "a" : "b"`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.ConditionalExpr); !ok {
+			t.Fatalf("expected *hclsyntax.ConditionalExpr, got %T", expr)
+		}
+
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"true ? a : b"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
 func TestExpressionToAST_FunctionCallExpr(t *testing.T) {
 	t.Run("simple_function_call", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte(`upper("hello")`), "test.hcl", hcl.Pos{Line: 1, Column: 1})

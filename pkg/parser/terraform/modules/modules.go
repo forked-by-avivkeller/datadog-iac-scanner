@@ -217,31 +217,16 @@ func getFileContent(file model.FileMetadata) string {
 func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) string {
 	switch e := expr.(type) {
 	case *hclsyntax.LiteralValueExpr:
-		if e.Val.Type().Equals(cty.String) {
-			return e.Val.AsString()
-		}
-		return "__NON_STRING_LITERAL__"
+		return resolveLiteralValueExpr(e)
 
 	case *hclsyntax.TemplateExpr:
-		var result strings.Builder
-		for _, part := range e.Parts {
-			switch p := part.(type) {
-			case *hclsyntax.LiteralValueExpr:
-				if p.Val.Type().Equals(cty.String) {
-					result.WriteString(p.Val.AsString())
-				}
-			case *hclsyntax.ScopeTraversalExpr:
-				result.WriteString(resolveScopeTraversal(p, locals, vars))
-			case *hclsyntax.RelativeTraversalExpr, *hclsyntax.FunctionCallExpr:
-				result.WriteString(resolveExpr(p, locals, vars))
-			default:
-				result.WriteString("${UNSUPPORTED_TEMPLATE_EXPR}")
-			}
-		}
-		return result.String()
+		return resolveTemplateExpr(e, locals, vars)
 
 	case *hclsyntax.ScopeTraversalExpr:
 		return resolveScopeTraversal(e, locals, vars)
+
+	case *hclsyntax.TemplateWrapExpr:
+		return resolveExpr(e.Wrapped, locals, vars)
 
 	case *hclsyntax.FunctionCallExpr:
 		return resolveFunctionCall(e, locals, vars)
@@ -249,9 +234,54 @@ func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) stri
 	case *hclsyntax.RelativeTraversalExpr:
 		return resolveRelativeTraversalExpr(e, locals, vars)
 
+	case *hclsyntax.ParenthesesExpr:
+		return resolveExpr(e.Expression, locals, vars)
+
+	case *hclsyntax.ConditionalExpr:
+		condStr := resolveExpr(e.Condition, locals, vars)
+		trueStr := resolveExpr(e.TrueResult, locals, vars)
+		falseStr := resolveExpr(e.FalseResult, locals, vars)
+		return condStr + " ? " + trueStr + " : " + falseStr
+
+	case *hclsyntax.IndexExpr:
+		collStr := resolveExpr(e.Collection, locals, vars)
+		keyStr := resolveExpr(e.Key, locals, vars)
+		return collStr + "[" + keyStr + "]"
+
+	case *hclsyntax.TupleConsExpr:
+		parts := make([]string, 0, len(e.Exprs))
+		for _, ex := range e.Exprs {
+			parts = append(parts, resolveExpr(ex, locals, vars))
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+
+	case *hclsyntax.ObjectConsExpr:
+		parts := make([]string, 0, len(e.Items))
+		for _, item := range e.Items {
+			keyStr := resolveExpr(item.KeyExpr, locals, vars)
+			valStr := resolveExpr(item.ValueExpr, locals, vars)
+			parts = append(parts, keyStr+": "+valStr)
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
+
 	default:
 		return resolveExprDefault(expr)
 	}
+}
+
+func resolveLiteralValueExpr(e *hclsyntax.LiteralValueExpr) string {
+	if e.Val.Type().Equals(cty.String) {
+		return e.Val.AsString()
+	}
+	return "__NON_STRING_LITERAL__"
+}
+
+func resolveTemplateExpr(e *hclsyntax.TemplateExpr, locals, vars map[string]string) string {
+	var result strings.Builder
+	for _, part := range e.Parts {
+		result.WriteString(resolveExpr(part, locals, vars))
+	}
+	return result.String()
 }
 
 func resolveRelativeTraversalExpr(e *hclsyntax.RelativeTraversalExpr, locals, vars map[string]string) string {
