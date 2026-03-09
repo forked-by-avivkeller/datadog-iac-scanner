@@ -7,7 +7,6 @@ package terraform
 
 import (
 	"context"
-	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -207,9 +206,6 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, path string,
 	}
 
 	linesToIgnore := comment.GetIgnoreLines(ignore, file.Body.(*hclsyntax.Body))
-
-	inputVarsCopy := make(converter.VariableMap, len(inputVariables))
-	maps.Copy(inputVarsCopy, inputVariables)
 
 	fc, parseErr := p.convertFunc(ctx, file, inputVariables)
 	json, err := addExtraInfo(ctx, []model.Document{fc}, path)
