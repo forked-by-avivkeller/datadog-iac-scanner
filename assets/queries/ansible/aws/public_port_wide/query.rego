@@ -1,6 +1,7 @@
 package Cx
 
 import data.generic.ansible as ansLib
+import data.generic.common as common_lib
 
 modules := {"amazon.aws.ec2_group", "ec2_group"}
 
@@ -24,6 +25,7 @@ CxPolicy[result] {
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("ec2_group.rules[%d] shouldn't have public port wide", [index]),
 		"keyActualValue": sprintf("ec2_group.rules[%d] has public port wide", [index]),
+		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m], "rules", index], []),
 	}
 }
 
@@ -47,5 +49,6 @@ CxPolicy[result] {
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("ec2_group.rules[%d] shouldn't have public port wide", [index]),
 		"keyActualValue": sprintf("ec2_group.rules[%d] has public port wide", [index]),
+		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m], "rules", index], []),
 	}
 }
