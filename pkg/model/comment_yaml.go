@@ -8,7 +8,6 @@ package model
 import (
 	"reflect"
 	"strings"
-	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -20,20 +19,15 @@ type comment string
 type Ignore struct {
 	// Lines is the lines to ignore
 	Lines []int
-	mu    sync.Mutex
 }
 
 // build builds the ignore struct
 func (i *Ignore) build(lines []int) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
 	i.Lines = append(i.Lines, lines...)
 }
 
 // GetLines returns the lines to ignore
 func (i *Ignore) GetLines() []int {
-	i.mu.Lock()
-	defer i.mu.Unlock()
 	return RemoveDuplicates(i.Lines)
 }
 
