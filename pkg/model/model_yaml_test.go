@@ -539,10 +539,9 @@ var tests = []struct {
 
 func TestDocument_UnmarshalYAML(t *testing.T) {
 	ctx := context.Background()
-	ignore := &Ignore{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.m.UnmarshalYAML(ctx, tt.args.value, ignore); (err != nil) != tt.wantErr {
+			if err := tt.m.UnmarshalYAML(ctx, tt.args.value, nil); (err != nil) != tt.wantErr {
 				t.Errorf("Document.UnmarshalYAML() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			compareJSONLine(t, tt.m, tt.want)
