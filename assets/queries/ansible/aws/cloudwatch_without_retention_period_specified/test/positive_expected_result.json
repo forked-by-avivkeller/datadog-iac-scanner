@@ -1,12 +1,12 @@
 [
   {
     "queryName": "CloudWatch Without Retention Period Specified",
-    "severity": "INFO",
+    "severity": "LOW",
     "line": 2
   },
   {
     "queryName": "CloudWatch Without Retention Period Specified",
-    "severity": "INFO",
+    "severity": "LOW",
     "line": 7
   }
 ]
