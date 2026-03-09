@@ -10,8 +10,8 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": input.document[i].id,
-		"resourceType": "n/a",
-		"resourceName": "n/a",
+		"resourceType": "ansible_playbook",
+		"resourceName": playbook.become_user,
 		"searchKey": "become",
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("'become' should be defined and set to 'true' in order to perform an action with %s", [playbook.become_user]),
@@ -26,8 +26,8 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": input.document[i].id,
-		"resourceType": "n/a",
-		"resourceName": "n/a",
+		"resourceType": "ansible_playbook",
+		"resourceName": playbook.become_user,
 		"searchKey": sprintf("become_user={{%s}}", [playbook.become_user]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("'become' should be defined and set to 'true' in order to perform an action with %s", [playbook.become_user]),
@@ -42,8 +42,8 @@ CxPolicy[result] {
 
     result := {
 		"documentId": id,
-		"resourceType": "n/a",
-		"resourceName": "n/a",
+		"resourceType": "ansible_task",
+		"resourceName": task.name,
 		"searchKey": sprintf("name={{%s}}.become_user={{%s}}.become", [task.name, task.become_user]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("'become' should be to 'true' in order to perform an action with %s", [task.become_user]),
@@ -58,8 +58,8 @@ CxPolicy[result] {
 
     result := {
 		"documentId": id,
-		"resourceType": "n/a",
-		"resourceName": "n/a",
+		"resourceType": "ansible_task",
+		"resourceName": task.name,
 		"searchKey": sprintf("name={{%s}}.become_user={{%s}}", [task.name, task.become_user]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("'become' should be defined and set to 'true' in order to perform an action with %s", [task.become_user]),
