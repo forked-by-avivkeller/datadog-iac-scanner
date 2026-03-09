@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 
@@ -23,11 +22,8 @@ type kindParser interface {
 	GetCommentToken() string
 	SupportedExtensions() []string
 	SupportedTypes() map[string]bool
-	Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error)
-	Resolve(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) ([]byte, error)
+	Parse(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) ([]byte, []model.Document, []int, map[string]model.ResolvedFile, error)
 	StringifyContent(content []byte) (string, error)
-	GetResolvedFiles(filename string) map[string]model.ResolvedFile
-	Clone() any
 }
 
 // Builder is a representation of parsers that will be construct
@@ -143,20 +139,12 @@ func (c *Parser) Parse(
 	fileContent = utils.DecryptAnsibleVault(ctx, fileContent, os.Getenv("ANSIBLE_VAULT_PASSWORD_FILE"))
 
 	if c.isValidExtension(ctx, filePath) {
-		parser, ok := c.parsers.Clone().(kindParser)
-		if !ok {
-			return ParsedDocument{}, fmt.Errorf("invalid kindParser")
-		}
-		resolved, err := parser.Resolve(ctx, fileContent, filePath, openAPIResolveReferences, maxResolverDepth)
-		if err != nil {
-			return ParsedDocument{}, err
-		}
-		obj, igLines, err := parser.Parse(ctx, filePath, resolved)
+		resolved, obj, igLines, resolvedFiles, err := c.parsers.Parse(ctx, fileContent, filePath, openAPIResolveReferences, maxResolverDepth)
 		if err != nil {
 			return ParsedDocument{}, err
 		}
 
-		cont, err := parser.StringifyContent(fileContent)
+		cont, err := c.parsers.StringifyContent(fileContent)
 		if err != nil {
 			contextLogger.Error().Msgf("failed to stringify original content: %s", err)
 			cont = string(fileContent)
@@ -164,11 +152,11 @@ func (c *Parser) Parse(
 
 		return ParsedDocument{
 			Docs:          obj,
-			Kind:          parser.GetKind(),
+			Kind:          c.parsers.GetKind(),
 			Content:       cont,
 			IgnoreLines:   igLines,
 			CountLines:    bytes.Count(resolved, []byte{'\n'}) + 1,
-			ResolvedFiles: parser.GetResolvedFiles(filePath),
+			ResolvedFiles: resolvedFiles,
 			IsMinified:    isMinified,
 		}, nil
 	}

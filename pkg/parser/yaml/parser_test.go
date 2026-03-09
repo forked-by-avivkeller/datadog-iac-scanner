@@ -3,14 +3,13 @@
  *
  * This product includes software developed at Datadog (https://www.datadoghq.com)  Copyright 2024 Datadog, Inc.
  */
-package json
+package yaml
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
@@ -366,7 +365,7 @@ resources:
 	ctx := context.Background()
 	for idx, tt := range have {
 		t.Run(fmt.Sprintf("test_parse_case_%d", idx), func(t *testing.T) {
-			doc, linesToIgnore, err := p.Parse(ctx, "test.yaml", []byte(tt))
+			_, doc, linesToIgnore, _, err := p.Parse(ctx, []byte(tt), "test.yaml", true, 15)
 			if want[idx].wantErr {
 				require.Error(t, err)
 			} else {
@@ -396,7 +395,7 @@ func Test_Resolve(t *testing.T) {
 	`
 	parser := &Parser{}
 
-	resolved, err := parser.Resolve(ctx, []byte(have), "test.yaml", true, 15)
+	resolved, _, err := parser.Resolve(ctx, []byte(have), "test.yaml", true, 15)
 	require.NoError(t, err)
 	require.Equal(t, []byte(have), resolved)
 }
@@ -469,7 +468,7 @@ func TestModel_TestYamlParser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := Parser{}
-			got, _, err := parser.Parse(ctx, "", []byte(tt.sample))
+			_, got, _, _, err := parser.Parse(ctx, []byte(tt.sample), "", true, 15)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -530,47 +529,6 @@ martin2:
 			got, err := tt.fields.parser.StringifyContent(tt.args.content)
 			require.Equal(t, tt.wantErr, (err != nil))
 			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestParser_GetResolvedFiles(t *testing.T) {
-	type fields struct {
-		resolvedFiles map[string]map[string]model.ResolvedFile
-		filename      string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   map[string]model.ResolvedFile
-	}{
-		{
-			name: "test get resolved files",
-			fields: fields{
-				resolvedFiles: map[string]map[string]model.ResolvedFile{
-					"test": {
-						"test": {
-							Content: []byte(`1`),
-						},
-					},
-				},
-				filename: "test",
-			},
-			want: map[string]model.ResolvedFile{
-				"test": {
-					Content: []byte(`1`),
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{
-				resolvedFiles: tt.fields.resolvedFiles,
-			}
-			if got := p.GetResolvedFiles(tt.fields.filename); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }

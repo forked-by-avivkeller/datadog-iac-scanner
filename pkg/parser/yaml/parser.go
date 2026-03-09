@@ -3,13 +3,11 @@
  *
  * This product includes software developed at Datadog (https://www.datadoghq.com)  Copyright 2024 Datadog, Inc.
  */
-package json
+package yaml
 
 import (
 	"bytes"
 	"context"
-	"maps"
-	"sync"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/parser/utils"
@@ -22,40 +20,41 @@ import (
 
 // Parser defines a parser type
 type Parser struct {
-	resolvedFiles   map[string]map[string]model.ResolvedFile
-	resolvedFilesMu sync.RWMutex
 }
 
 // Resolve - replace or modifies in-memory content before parsing
 func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename string,
-	resolveReferences bool, maxResolverDepth int) ([]byte, error) {
+	resolveReferences bool, maxResolverDepth int) (resolved []byte, resolvedFiles map[string]model.ResolvedFile, err error) {
 	// Resolve files passed as arguments with file resolver (e.g. file://)
 	res := file.NewResolver(yaml.Unmarshal, yaml.Marshal, p.SupportedExtensions())
 	resolvedFilesCache := make(map[string]file.ResolvedFile)
-	resolved := res.Resolve(ctx, fileContent, filename, 0, maxResolverDepth, resolvedFilesCache, resolveReferences)
-
-	p.resolvedFilesMu.Lock()
-	if p.resolvedFiles == nil {
-		p.resolvedFiles = make(map[string]map[string]model.ResolvedFile)
-	}
-
-	p.resolvedFiles[filename] = res.ResolvedFiles
-	p.resolvedFilesMu.Unlock()
+	resolved = res.Resolve(ctx, fileContent, filename, 0, maxResolverDepth, resolvedFilesCache, resolveReferences)
 
 	if len(res.ResolvedFiles) == 0 {
-		return fileContent, nil
+		return fileContent, res.ResolvedFiles, nil
 	}
 
-	return resolved, nil
+	return resolved, res.ResolvedFiles, nil
 }
 
 // Parse parses yaml/yml file and returns it as a Document
-func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error) {
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	error error) {
+
+	resolved, resolvedFiles, err := p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
+	if err != nil {
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+	}
+
 	ignore := &model.Ignore{}
-	var documents []model.Document
 
 	// Parse all documents as nodes
-	dec := yaml.NewDecoder(bytes.NewReader(fileContent))
+	dec := yaml.NewDecoder(bytes.NewReader(resolved))
 	for {
 		var node yaml.Node
 		if err := dec.Decode(&node); err != nil {
@@ -68,7 +67,7 @@ func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte)
 			contentNode := node.Content[0]
 			doc := model.Document{}
 			if err := doc.UnmarshalYAML(ctx, contentNode, ignore); err != nil {
-				return nil, []int{}, errors.Wrap(err, "failed to unmarshal yaml")
+				return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to unmarshal yaml")
 			}
 
 			if len(doc) > 0 {
@@ -78,13 +77,13 @@ func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte)
 	}
 
 	if len(documents) == 0 {
-		return nil, []int{}, errors.New("no documents found in yaml file")
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.New("no documents found in yaml file")
 	}
 
 	linesToIgnore := ignore.GetLines()
 
 	// UnmarshalYAML already adds line tracking, so we can use documents directly
-	return convertKeysToString(addExtraInfo(ctx, documents, filePath)), linesToIgnore, nil
+	return resolved, convertKeysToString(addExtraInfo(ctx, documents, filePath)), linesToIgnore, resolvedFiles, nil
 }
 
 // convertKeysToString goes through every document to convert map[interface{}]interface{}
@@ -212,27 +211,4 @@ func (p *Parser) GetCommentToken() string {
 // StringifyContent converts original content into string formatted version
 func (p *Parser) StringifyContent(content []byte) (string, error) {
 	return string(content), nil
-}
-
-// GetResolvedFiles returns resolved files
-func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
-	p.resolvedFilesMu.RLock()
-	defer p.resolvedFilesMu.RUnlock()
-	resolvedFiles := make(map[string]model.ResolvedFile, len(p.resolvedFiles))
-	maps.Copy(resolvedFiles, p.resolvedFiles[filename])
-	return resolvedFiles
-}
-
-func (p *Parser) Clone() any {
-	p.resolvedFilesMu.RLock()
-	defer p.resolvedFilesMu.RUnlock()
-	resolvedFiles := make(map[string]map[string]model.ResolvedFile, len(p.resolvedFiles))
-	for filename, innerMap := range p.resolvedFiles {
-		innerCopy := make(map[string]model.ResolvedFile, len(innerMap))
-		maps.Copy(innerCopy, innerMap)
-		resolvedFiles[filename] = innerCopy
-	}
-	return &Parser{
-		resolvedFiles: p.resolvedFiles,
-	}
 }

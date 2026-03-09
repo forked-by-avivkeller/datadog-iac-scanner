@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
@@ -37,16 +36,13 @@ type Parser struct {
 	numOfRetries      int
 	terraformVarsPath string
 	sciInfo           model.SCIInfo
-	inputVariables    map[string]converter.VariableMap
-	inputVarsMu       sync.RWMutex
 }
 
 // NewDefault initializes a parser with Parser default values
 func NewDefault() *Parser {
 	return &Parser{
-		numOfRetries:   RetriesDefaultValue,
-		convertFunc:    converter.DefaultConverted,
-		inputVariables: make(map[string]converter.VariableMap),
+		numOfRetries: RetriesDefaultValue,
+		convertFunc:  converter.DefaultConverted,
 	}
 }
 
@@ -59,7 +55,7 @@ func NewDefaultWithParams(terraformVarsPath string, sciInfo model.SCIInfo) *Pars
 }
 
 // Resolve - replace or modifies in-memory content before parsing
-func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) ([]byte, error) {
+func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) (resolved []byte, vars converter.VariableMap, err error) {
 	// handle panic during resolve process
 	defer func() {
 		if r := recover(); r != nil {
@@ -68,14 +64,9 @@ func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename strin
 		}
 	}()
 	inputVars := getInputVariables(ctx, filepath.Dir(filename), string(fileContent), p.terraformVarsPath)
-	vars := getDataSourcePolicy(ctx, filepath.Dir(filename), inputVars)
+	vars = getDataSourcePolicy(ctx, filepath.Dir(filename), inputVars)
 
-	// Store variables per filename to avoid race conditions between different files
-	p.inputVarsMu.Lock()
-	p.inputVariables[filename] = vars
-	p.inputVarsMu.Unlock()
-
-	return fileContent, nil
+	return fileContent, vars, nil
 }
 
 func processContent(ctx context.Context, elements model.Document, content, path string) {
@@ -185,9 +176,20 @@ func parseFile(filename string, shouldReplaceDataSource bool) (*hcl.File, error)
 }
 
 // Parse execute parser for the content in a file
-func (p *Parser) Parse(ctx context.Context, path string, content []byte) ([]model.Document, []int, error) {
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, path string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	error error) {
 	contextLogger := logger.FromContext(ctx)
-	file, diagnostics := hclsyntax.ParseConfig(content, filepath.Base(path), hcl.Pos{Byte: 0, Line: 1, Column: 1})
+	resolved, inputVariables, err := p.Resolve(ctx, fileContent, path, resolveReferences, maxResolverDepth)
+	if err != nil {
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+	}
+
+	file, diagnostics := hclsyntax.ParseConfig(resolved, filepath.Base(path), hcl.Pos{Byte: 0, Line: 1, Column: 1})
 	defer func() {
 		if r := recover(); r != nil {
 			errMessage := "Recovered from panic during parsing of file " + path
@@ -196,32 +198,26 @@ func (p *Parser) Parse(ctx context.Context, path string, content []byte) ([]mode
 	}()
 	if diagnostics != nil && diagnostics.HasErrors() && len(diagnostics.Errs()) > 0 {
 		err := diagnostics.Errs()[0]
-		return nil, []int{}, err
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
 	}
 
-	ignore, err := comment.ParseComments(content, path)
+	ignore, err := comment.ParseComments(resolved, path)
 	if err != nil {
 		contextLogger.Err(err).Msg("failed to parse comments")
 	}
 
 	linesToIgnore := comment.GetIgnoreLines(ignore, file.Body.(*hclsyntax.Body))
 
-	p.inputVarsMu.RLock()
-	inputVars, ok := p.inputVariables[path]
-	if !ok {
-		inputVars = make(converter.VariableMap)
-	}
-	p.inputVarsMu.RUnlock()
-	inputVarsCopy := make(converter.VariableMap, len(inputVars))
-	maps.Copy(inputVarsCopy, inputVars)
+	inputVarsCopy := make(converter.VariableMap, len(inputVariables))
+	maps.Copy(inputVarsCopy, inputVariables)
 
-	fc, parseErr := p.convertFunc(ctx, file, inputVarsCopy)
+	fc, parseErr := p.convertFunc(ctx, file, inputVariables)
 	json, err := addExtraInfo(ctx, []model.Document{fc}, path)
 	if err != nil {
-		return json, []int{}, errors.Wrap(err, "failed terraform parse")
+		return []byte{}, json, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed terraform parse")
 	}
 
-	return json, linesToIgnore, errors.Wrap(parseErr, "failed terraform parse")
+	return resolved, json, linesToIgnore, resolvedFiles, errors.Wrap(parseErr, "failed terraform parse")
 }
 
 // SupportedExtensions returns Terraform extensions
@@ -247,17 +243,4 @@ func (p *Parser) GetCommentToken() string {
 // StringifyContent converts original content into string formatted version
 func (p *Parser) StringifyContent(content []byte) (string, error) {
 	return string(content), nil
-}
-
-// GetResolvedFiles returns the files that are resolved
-func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
-	return make(map[string]model.ResolvedFile)
-}
-
-func (p *Parser) Clone() any {
-	parser := NewDefaultWithParams(p.terraformVarsPath, p.sciInfo)
-	p.inputVarsMu.RLock()
-	defer p.inputVarsMu.RUnlock()
-	maps.Copy(parser.inputVariables, p.inputVariables)
-	return parser
 }

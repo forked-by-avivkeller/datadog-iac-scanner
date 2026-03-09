@@ -16,31 +16,31 @@ import (
 )
 
 // Parser defines a parser type
-type Parser struct {
-	ignore *model.Ignore
-}
-
-func (p *Parser) Resolve(ctx context.Context, fileContent []byte, _ string, _ bool, _ int) ([]byte, error) {
-	return fileContent, nil
-}
+type Parser struct{}
 
 // Parse parses .cfg/.conf file and returns it as a Document
-func (p *Parser) Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error) {
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	error error) {
 	reader := strings.NewReader(string(fileContent))
 	configparser.Delimiters("=")
 	inline := configparser.InlineCommentPrefixes([]string{";"})
 
 	config, err := configparser.ParseReaderWithOptions(reader, inline)
 	if err != nil {
-		return nil, nil, err
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
 	}
 
 	doc := make(map[string]interface{})
 	doc["groups"] = refactorConfig(config)
 
-	ignoreLines := comments.GetIgnoreLines(strings.Split(string(fileContent), "\n"))
+	ignoreLines = comments.GetIgnoreLines(strings.Split(string(fileContent), "\n"))
 
-	return []model.Document{doc}, ignoreLines, nil
+	return fileContent, []model.Document{doc}, ignoreLines, map[string]model.ResolvedFile{}, nil
 }
 
 // refactorConfig removes all extra information and tries to convert
@@ -99,11 +99,6 @@ func (p *Parser) GetCommentToken() string {
 	return "#"
 }
 
-// GetResolvedFiles returns resolved files
-func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
-	return make(map[string]model.ResolvedFile)
-}
-
 // StringifyContent converts original content into string formatted version
 func (p *Parser) StringifyContent(content []byte) (string, error) {
 	return string(content), nil
@@ -111,10 +106,4 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 
 func emptyDocument() *model.Document {
 	return &model.Document{}
-}
-
-func (p *Parser) Clone() any {
-	return &Parser{
-		ignore: &model.Ignore{},
-	}
 }

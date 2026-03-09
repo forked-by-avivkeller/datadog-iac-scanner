@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
@@ -29,35 +28,6 @@ func TestParser_SupportedTypes(t *testing.T) {
 func TestParser_SupportedExtensions(t *testing.T) {
 	p := &Parser{}
 	require.Equal(t, []string{".bicep"}, p.SupportedExtensions())
-}
-
-func Test_Resolve(t *testing.T) {
-	ctx := context.Background()
-	parser := &Parser{}
-	param := `param vmName string = 'simple-vm'`
-	resolved, err := parser.Resolve(ctx, []byte(param), "test.bicep", true, 15)
-	require.NoError(t, err)
-	require.Equal(t, []byte(param), resolved)
-}
-
-func TestParser_GetResolvedFiles(t *testing.T) {
-	tests := []struct {
-		name string
-		want map[string]model.ResolvedFile
-	}{
-		{
-			name: "Should test getting empty resolved files",
-			want: map[string]model.ResolvedFile{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{}
-			if got := p.GetResolvedFiles(tt.name); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 // TestParser_StringifyContent tests the StringifyContent function
@@ -1729,7 +1699,7 @@ func TestParseBicepFile(t *testing.T) {
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			document, _, err := parser.Parse(ctx, tt.filename, nil)
+			_, document, _, _, err := parser.Parse(ctx, nil, tt.filename, true, 15)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parser.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -20,12 +20,18 @@ type Parser struct {
 }
 
 // Parse - parses grpc to Json
-func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]model.Document, []int, error) {
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	error error) {
 	reader := bytes.NewReader(fileContent)
 	parserProto := proto.NewParser(reader)
 	nodes, err := parserProto.Parse()
 	if err != nil {
-		return nil, nil, err
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
 	}
 
 	var doc model.Document
@@ -34,15 +40,15 @@ func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]mod
 
 	protoBytes, err := json.Marshal(jproto)
 	if err != nil {
-		return nil, nil, err
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
 	}
 
 	err = json.Unmarshal(protoBytes, &doc)
 	if err != nil {
-		return nil, nil, err
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
 	}
 
-	return []model.Document{doc}, linesIgnore, nil
+	return fileContent, []model.Document{doc}, linesIgnore, resolvedFiles, nil
 }
 
 // GetKind returns the kind of the parser
@@ -68,18 +74,4 @@ func (p *Parser) GetCommentToken() string {
 // StringifyContent converts original content into string formatted version
 func (p *Parser) StringifyContent(content []byte) (string, error) {
 	return string(content), nil
-}
-
-// Resolve resolves proto files variables
-func (p *Parser) Resolve(ctx context.Context, fileContent []byte, _ string, _ bool, _ int) ([]byte, error) {
-	return fileContent, nil
-}
-
-// GetResolvedFiles returns the list of files that are resolved
-func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
-	return make(map[string]model.ResolvedFile)
-}
-
-func (p *Parser) Clone() any {
-	return &Parser{}
 }

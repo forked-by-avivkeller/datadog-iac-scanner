@@ -55,13 +55,14 @@ const (
 	buildah = "buildah"
 )
 
-// Resolve - replace or modifies in-memory content before parsing
-func (p *Parser) Resolve(ctx context.Context, fileContent []byte, _ string, _ bool, _ int) ([]byte, error) {
-	return fileContent, nil
-}
-
 // Parse - parses Buildah file to Json
-func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]model.Document, []int, error) {
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	error error) {
 	var info Info
 	info.From = map[string][]Command{}
 
@@ -69,7 +70,7 @@ func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]mod
 	f, err := syntax.NewParser(syntax.KeepComments(true)).Parse(reader, "")
 
 	if err != nil {
-		return nil, []int{}, err
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
 	}
 
 	syntax.Walk(f, func(node syntax.Node) bool {
@@ -85,25 +86,24 @@ func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]mod
 	// get dd-iac-scan ignore-block related to from
 	info.ignoreFromBlock()
 
-	var documents []model.Document
 	var resource Resource
 	resource.CommandList = info.From
 	doc := &model.Document{}
 	j, err := json.Marshal(resource)
 	if err != nil {
-		return nil, []int{}, errors.Wrap(err, "failed to Marshal Buildah")
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to Marshal Buildah")
 	}
 
 	err = json.Unmarshal(j, &doc)
 	if err != nil {
-		return nil, []int{}, errors.Wrap(err, "failed to Unmarshal Buildah")
+		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to Unmarshal Buildah")
 	}
 
 	documents = append(documents, *doc)
 
 	sort.Ints(info.IgnoreLines)
 
-	return documents, info.IgnoreLines, nil
+	return fileContent, documents, info.IgnoreLines, map[string]model.ResolvedFile{}, nil
 }
 
 func (i *Info) getStmt(ctx context.Context, stmt *syntax.Stmt) {
@@ -223,13 +223,4 @@ func (p *Parser) GetCommentToken() string {
 // StringifyContent converts original content into string formatted version
 func (p *Parser) StringifyContent(content []byte) (string, error) {
 	return string(content), nil
-}
-
-// GetResolvedFiles returns the resolved files
-func (p *Parser) GetResolvedFiles(filename string) map[string]model.ResolvedFile {
-	return make(map[string]model.ResolvedFile)
-}
-
-func (p *Parser) Clone() any {
-	return &Parser{}
 }
