@@ -247,11 +247,11 @@ func TestExpToString_ObjectConsExpr(t *testing.T) {
 		t.Fatalf("ExpToString error: %v", err)
 	}
 	// Key order may vary; check it contains both key-value pairs
-	if !strings.Contains(got, "a: var.x") && !strings.Contains(got, "var.x") {
-		t.Errorf("ExpToString = %q, expected to contain a and var.x", got)
+	if !strings.Contains(got, "a: var.x") {
+		t.Errorf("ExpToString = %q, expected to contain a: var.x", got)
 	}
-	if !strings.Contains(got, "b: y") && !strings.Contains(got, "y") {
-		t.Errorf("ExpToString = %q, expected to contain b and y", got)
+	if !strings.Contains(got, "b: y") {
+		t.Errorf("ExpToString = %q, expected to contain b: y", got)
 	}
 	if !strings.HasPrefix(got, "{") || !strings.HasSuffix(got, "}") {
 		t.Errorf("ExpToString = %q, expected to be wrapped in {}", got)
