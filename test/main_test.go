@@ -53,6 +53,13 @@ var (
 		"../assets/queries/terraform/tencentcloud": {FileKind: []model.FileKind{model.KindTerraform, model.KindJSON}, Platform: "terraform"},
 		"../assets/queries/dockerfile":             {FileKind: []model.FileKind{"DOCKERFILE"}, Platform: "dockerfile"},
 
+		"../assets/queries/ansible/aws":     {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
+		"../assets/queries/ansible/gcp":     {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
+		"../assets/queries/ansible/azure":   {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
+		"../assets/queries/ansible/general": {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
+		"../assets/queries/ansible/config":  {FileKind: []model.FileKind{model.KindCFG}, Platform: "ansible"},
+		"../assets/queries/ansible/hosts":   {FileKind: []model.FileKind{model.KindINI, model.KindYAML}, Platform: "ansible"},
+
 		// E2E Query Tests to be enabled later
 		// "../assets/queries/crossplane/aws":                  {FileKind: []model.FileKind{model.KindYAML}, Platform: "crossplane"},
 		// "../assets/queries/crossplane/azure":                {FileKind: []model.FileKind{model.KindYAML}, Platform: "crossplane"},
@@ -61,13 +68,6 @@ var (
 		// "../assets/queries/pulumi/gcp":                      {FileKind: []model.FileKind{model.KindYAML}, Platform: "pulumi"},
 		// "../assets/queries/pulumi/kubernetes":               {FileKind: []model.FileKind{model.KindYAML}, Platform: "pulumi"},
 		// "../assets/queries/pulumi/azure":                    {FileKind: []model.FileKind{model.KindYAML}, Platform: "pulumi"},
-		// "../assets/queries/k8s":                             {FileKind: []model.FileKind{model.KindYAML, model.KindJSON}, Platform: "k8s"},
-		// "../assets/queries/ansible/aws":                     {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
-		// "../assets/queries/ansible/gcp":                     {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
-		// "../assets/queries/ansible/azure":                   {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
-		// "../assets/queries/ansible/general":                 {FileKind: []model.FileKind{model.KindYAML}, Platform: "ansible"},
-		// "../assets/queries/ansible/config":                  {FileKind: []model.FileKind{model.KindCFG}, Platform: "ansible"},
-		// "../assets/queries/ansible/hosts":                   {FileKind: []model.FileKind{model.KindINI, model.KindYAML}, Platform: "ansible"},
 		// "../assets/queries/openAPI/general":                 {FileKind: []model.FileKind{model.KindYAML, model.KindJSON}, Platform: "openAPI"},
 		// "../assets/queries/openAPI/3.0":                     {FileKind: []model.FileKind{model.KindYAML, model.KindJSON}, Platform: "openAPI"},
 		// "../assets/queries/openAPI/2.0":                     {FileKind: []model.FileKind{model.KindYAML, model.KindJSON}, Platform: "openAPI"},
@@ -78,7 +78,6 @@ var (
 		// "../assets/queries/buildah":                         {FileKind: []model.FileKind{model.KindBUILDAH}, Platform: "buildah"},
 		// "../assets/queries/serverlessFW":                    {FileKind: []model.FileKind{model.KindYAML, model.KindYML}, Platform: "serverlessFW"},
 		// "../assets/queries/knative":                         {FileKind: []model.FileKind{model.KindYAML}, Platform: "knative"},
-		// "../assets/queries/cicd/github":                     {FileKind: []model.FileKind{model.KindYAML}, Platform: "cicd"},
 	}
 
 	issueTypes = map[string]string{
