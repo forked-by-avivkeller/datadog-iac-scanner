@@ -30,7 +30,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	inventoryReader := strings.NewReader(string(fileContent))
 	var inventory, err = aini.Parse(inventoryReader)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	doc := model.Document{}

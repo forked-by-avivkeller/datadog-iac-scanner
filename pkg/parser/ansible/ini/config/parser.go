@@ -32,7 +32,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	config, err := configparser.ParseReaderWithOptions(reader, inline)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	doc := make(map[string]interface{})
@@ -40,7 +40,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	ignoreLines = comments.GetIgnoreLines(strings.Split(string(fileContent), "\n"))
 
-	return fileContent, []model.Document{doc}, ignoreLines, map[string]model.ResolvedFile{}, nil
+	return fileContent, []model.Document{doc}, ignoreLines, nil, nil
 }
 
 // refactorConfig removes all extra information and tries to convert

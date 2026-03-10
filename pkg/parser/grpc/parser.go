@@ -31,7 +31,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	parserProto := proto.NewParser(reader)
 	nodes, err := parserProto.Parse()
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	var doc model.Document
@@ -40,12 +40,12 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	protoBytes, err := json.Marshal(jproto)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	err = json.Unmarshal(protoBytes, &doc)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	return fileContent, []model.Document{doc}, linesIgnore, resolvedFiles, nil

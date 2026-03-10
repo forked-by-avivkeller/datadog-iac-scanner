@@ -46,7 +46,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	parsed, err := parser.Parse(reader)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to parse Dockerfile")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to parse Dockerfile")
 	}
 
 	fromValue := ""
@@ -113,11 +113,11 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	j, err := json.Marshal(resource)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to Marshal Dockerfile")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to Marshal Dockerfile")
 	}
 
 	if err := json.Unmarshal(j, &doc); err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to Unmarshal Dockerfile")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to Unmarshal Dockerfile")
 	}
 
 	documents = append(documents, *doc)

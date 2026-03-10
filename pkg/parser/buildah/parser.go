@@ -70,7 +70,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	f, err := syntax.NewParser(syntax.KeepComments(true)).Parse(reader, "")
 
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	syntax.Walk(f, func(node syntax.Node) bool {
@@ -91,12 +91,12 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	doc := &model.Document{}
 	j, err := json.Marshal(resource)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to Marshal Buildah")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to Marshal Buildah")
 	}
 
 	err = json.Unmarshal(j, &doc)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, errors.Wrap(err, "failed to Unmarshal Buildah")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to Unmarshal Buildah")
 	}
 
 	documents = append(documents, *doc)

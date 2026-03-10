@@ -49,7 +49,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	resolved, resolvedFiles, err := p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	r := model.Document{}
@@ -57,7 +57,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	if err != nil {
 		var r []model.Document
 		err = json.Unmarshal(resolved, &r)
-		return []byte{}, r, []int{}, resolvedFiles, err
+		return nil, r, nil, resolvedFiles, err
 	}
 
 	jLine := initializeJSONLine(resolved)
@@ -67,14 +67,14 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	kicsPlan, err := parseTFPlan(kicsJSON)
 	if err != nil {
 		// JSON is not a tf plan
-		return resolved, []model.Document{kicsJSON}, []int{}, resolvedFiles, nil
+		return resolved, []model.Document{kicsJSON}, nil, resolvedFiles, nil
 	}
 
 	p.shouldIdentMu.Lock()
 	p.shouldIdent = true
 	p.shouldIdentMu.Unlock()
 
-	return resolved, []model.Document{kicsPlan}, []int{}, resolvedFiles, nil
+	return resolved, []model.Document{kicsPlan}, nil, resolvedFiles, nil
 }
 
 // SupportedExtensions returns extensions supported by this parser, which is json extension

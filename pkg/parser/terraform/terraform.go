@@ -185,7 +185,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, path string,
 	contextLogger := logger.FromContext(ctx)
 	resolved, inputVariables, err := p.Resolve(ctx, fileContent, path, resolveReferences, maxResolverDepth)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	file, diagnostics := hclsyntax.ParseConfig(resolved, filepath.Base(path), hcl.Pos{Byte: 0, Line: 1, Column: 1})
@@ -197,7 +197,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, path string,
 	}()
 	if diagnostics != nil && diagnostics.HasErrors() && len(diagnostics.Errs()) > 0 {
 		err := diagnostics.Errs()[0]
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	ignore, err := comment.ParseComments(resolved, path)

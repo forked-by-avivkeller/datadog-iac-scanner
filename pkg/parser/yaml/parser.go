@@ -48,7 +48,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	resolved, resolvedFiles, err := p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	ignore := &model.Ignore{}

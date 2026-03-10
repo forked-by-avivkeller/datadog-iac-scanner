@@ -207,7 +207,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	bicepVisitor := NewBicepVisitor()
 	stream, err := antlr.NewFileStream(filePath)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 	lexer := parser.NewbicepLexer(stream)
 
@@ -231,12 +231,12 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 
 	bicepBytes, err := json.Marshal(jBicep)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	err = json.Unmarshal(bicepBytes, &doc)
 	if err != nil {
-		return []byte{}, nil, []int{}, map[string]model.ResolvedFile{}, err
+		return nil, nil, nil, nil, err
 	}
 
 	return fileContent, []model.Document{doc}, nil, map[string]model.ResolvedFile{}, nil
