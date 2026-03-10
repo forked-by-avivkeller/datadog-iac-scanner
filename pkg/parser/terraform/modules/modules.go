@@ -555,6 +555,11 @@ func generateEquivalentMap(ctx context.Context, modulePath string) (map[string]M
 			continue
 		}
 
+		if !isTerraformFile(entry.Name()) {
+			contextLogger.Debug().Msgf("Skipping non-Terraform file: %s", path)
+			continue
+		}
+
 		contents, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
 			contextLogger.Error().Msgf("Failed to read file: %s", path)
