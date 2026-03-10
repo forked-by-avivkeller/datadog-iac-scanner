@@ -1,0 +1,7 @@
+[
+  {
+    "queryName": "ECS Services assigned with public IP address",
+    "severity": "MEDIUM",
+    "line": 19
+  }
+]

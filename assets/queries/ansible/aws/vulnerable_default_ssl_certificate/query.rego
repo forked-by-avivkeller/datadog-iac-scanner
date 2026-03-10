@@ -20,6 +20,7 @@ CxPolicy[result] {
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "Attribute 'cloudfront_default_certificate' should be 'false' or not defined",
 		"keyActualValue": "Attribute 'cloudfront_default_certificate' is 'true'",
+		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m]], ["viewer_certificate", "cloudfront_default_certificate"]),
 	}
 }
 
@@ -40,9 +41,11 @@ CxPolicy[result] {
 		"resourceType": modules[m],
 		"resourceName": task.name,
 		"searchKey": sprintf("name={{%s}}.{{%s}}.viewer_certificate", [task.name, modules[m]]),
+		"searchValue": attr,
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("Attribute %s should be defined when one of 'acm_certificate_arn' or 'iam_certificate_id' is declared.", [attr]),
 		"keyActualValue": sprintf("Attribute '%s' is not defined", [attr]),
+		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m]], ["viewer_certificate"]),
 	}
 }
 

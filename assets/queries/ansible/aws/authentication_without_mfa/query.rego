@@ -17,8 +17,10 @@ CxPolicy[result] {
 		"resourceType": modules[m],
 		"resourceName": task.name,
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
+		"searchValue": attributes[j],
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("sts_assume_role.%s should be set", [attributes[j]]),
 		"keyActualValue": sprintf("sts_assume_role.%s is undefined", [attributes[j]]),
+		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m]], []),
 	}
 }
