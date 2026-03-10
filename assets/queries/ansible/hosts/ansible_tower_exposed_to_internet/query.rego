@@ -11,8 +11,8 @@ CxPolicy[result] {
 	result := {
 		"documentId": input.document[id].id,
 		"hostname": "tower",
-		"resourceName": "children",
-		"resourceType": "n/a",
+		"resourceName": "tower",
+		"resourceType": "ansible_inventory",
 		"searchKey": "all.children.tower.hosts",
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "Ansible Tower IP should be private",

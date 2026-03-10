@@ -11,8 +11,8 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": input.document[i].id,
-		"resourceType": "n/a",
-		"resourceName": "n/a",
+		"resourceType": "ansible_config",
+		"resourceName": "defaults",
 		"searchKey": "defaults.become_user",
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "'become' should be defined and set to 'true'",
@@ -28,8 +28,8 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": input.document[i].id,
-		"resourceType": "n/a",
-		"resourceName": "n/a",
+		"resourceType": "ansible_config",
+		"resourceName": "defaults",
 		"searchKey": "defaults.become",
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'become' should be set to 'true'",

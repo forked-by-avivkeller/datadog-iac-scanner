@@ -11,8 +11,8 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": input.document[i].id,
-		"resourceType": "n/a",
-		"resourceName": "n/a",
+		"resourceType": "ansible_config",
+		"resourceName": "galaxy",
 		"searchKey": "[galaxy].server",
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'server' from galaxy group should be accessed via the HTTPS protocol",

@@ -10,7 +10,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": input.document[i].id,
 		"resourceName": "defaults",
-		"resourceType": "n/a",
+		"resourceType": "ansible_config",
 		"searchKey": "defaults.allow_unsafe_lookups",
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "allow_unsafe_lookups should be set to 'False'",
