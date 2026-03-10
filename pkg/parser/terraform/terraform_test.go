@@ -188,7 +188,7 @@ func Test_Resolve(t *testing.T) {
 	ctx := context.Background()
 	parser := NewDefault()
 
-	_, resolved, err := parser.Resolve(ctx, []byte(have), "test.tf", true, 15)
+	resolved, _, err := parser.Resolve(ctx, []byte(have), "test.tf", true, 15)
 	require.NoError(t, err)
 	require.Equal(t, []byte(have), resolved)
 }
