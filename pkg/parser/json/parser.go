@@ -17,10 +17,8 @@ import (
 
 // Parser defines a parser type
 type Parser struct {
-	shouldIdent     bool
-	shouldIdentMu   sync.RWMutex
-	resolvedFiles   map[string]map[string]model.ResolvedFile
-	resolvedFilesMu sync.RWMutex
+	shouldIdent   bool
+	shouldIdentMu sync.RWMutex
 }
 
 // Resolve - replace or modifies in-memory content before parsing
@@ -45,9 +43,8 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	documents []model.Document,
 	ignoreLines []int,
 	resolvedFiles map[string]model.ResolvedFile,
-	error error) {
-
-	resolved, resolvedFiles, err := p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
+	err error) {
+	resolved, resolvedFiles, err = p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

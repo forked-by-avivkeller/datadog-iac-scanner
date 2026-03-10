@@ -25,7 +25,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	documents []model.Document,
 	ignoreLines []int,
 	resolvedFiles map[string]model.ResolvedFile,
-	error error) {
+	err error) {
 	reader := strings.NewReader(string(fileContent))
 	configparser.Delimiters("=")
 	inline := configparser.InlineCommentPrefixes([]string{";"})

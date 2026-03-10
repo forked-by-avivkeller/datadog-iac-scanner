@@ -26,9 +26,9 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	documents []model.Document,
 	ignoreLines []int,
 	resolvedFiles map[string]model.ResolvedFile,
-	error error) {
+	err error) {
 	inventoryReader := strings.NewReader(string(fileContent))
-	var inventory, err = aini.Parse(inventoryReader)
+	inventory, err := aini.Parse(inventoryReader)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

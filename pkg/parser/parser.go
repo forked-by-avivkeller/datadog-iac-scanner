@@ -22,7 +22,9 @@ type kindParser interface {
 	GetCommentToken() string
 	SupportedExtensions() []string
 	SupportedTypes() map[string]bool
-	Parse(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) ([]byte, []model.Document, []int, map[string]model.ResolvedFile, error)
+	Parse(ctx context.Context,
+		fileContent []byte,
+		filename string, _ bool, _ int) ([]byte, []model.Document, []int, map[string]model.ResolvedFile, error)
 	StringifyContent(content []byte) (string, error)
 }
 

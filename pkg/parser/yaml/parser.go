@@ -44,9 +44,8 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	documents []model.Document,
 	ignoreLines []int,
 	resolvedFiles map[string]model.ResolvedFile,
-	error error) {
-
-	resolved, resolvedFiles, err := p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
+	err error) {
+	resolved, resolvedFiles, err = p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

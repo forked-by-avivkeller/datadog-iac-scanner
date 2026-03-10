@@ -54,7 +54,9 @@ func NewDefaultWithParams(terraformVarsPath string, sciInfo model.SCIInfo) *Pars
 }
 
 // Resolve - replace or modifies in-memory content before parsing
-func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) (resolved []byte, vars converter.VariableMap, err error) {
+func (p *Parser) Resolve(ctx context.Context,
+	fileContent []byte,
+	filename string, _ bool, _ int) (resolved []byte, vars converter.VariableMap, err error) {
 	// handle panic during resolve process
 	defer func() {
 		if r := recover(); r != nil {
@@ -181,7 +183,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, path string,
 	documents []model.Document,
 	ignoreLines []int,
 	resolvedFiles map[string]model.ResolvedFile,
-	error error) {
+	err error) {
 	contextLogger := logger.FromContext(ctx)
 	resolved, inputVariables, err := p.Resolve(ctx, fileContent, path, resolveReferences, maxResolverDepth)
 	if err != nil {

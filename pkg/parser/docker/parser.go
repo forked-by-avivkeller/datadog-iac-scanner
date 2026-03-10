@@ -41,7 +41,7 @@ func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
 	documents []model.Document,
 	ignoreLines []int,
 	resolvedFiles map[string]model.ResolvedFile,
-	error error) {
+	err error) {
 	reader := bytes.NewReader(fileContent)
 
 	parsed, err := parser.Parse(reader)
