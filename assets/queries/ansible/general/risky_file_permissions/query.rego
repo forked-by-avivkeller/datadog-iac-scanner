@@ -73,7 +73,7 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": id,
-		"resourceType": modules[m],
+		"resourceType": m,
 		"resourceName": task.name,
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, m]),
 		"issueType": "IncorrectValue",
