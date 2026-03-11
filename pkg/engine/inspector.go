@@ -798,6 +798,18 @@ func (v *inspectorExprVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (ast
 func (v *inspectorExprVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (ast.Value, error) {
 	return ast.String("__UNSUPPORTED_EXPR__"), nil
 }
+func (v *inspectorExprVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (ast.Value, error) {
+	return expressionToASTBinaryOpExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (ast.Value, error) {
+	return expressionToASTUnaryOpExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitForExpr(e *hclsyntax.ForExpr) (ast.Value, error) {
+	return expressionToASTForExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (ast.Value, error) {
+	return expressionToASTSplatExpr(e), nil
+}
 func (v *inspectorExprVisitor) VisitDefault(e hclsyntax.Expression) (ast.Value, error) {
 	return ast.String("__UNSUPPORTED_EXPR__"), nil
 }
@@ -901,6 +913,74 @@ func expressionToASTFunctionCallExpr(e *hclsyntax.FunctionCallExpr) ast.Value {
 		args = append(args, astValueToSimpleString(v))
 	}
 	return ast.String(e.Name + "(" + strings.Join(args, ", ") + ")")
+}
+
+func expressionToASTBinaryOpExpr(e *hclsyntax.BinaryOpExpr) ast.Value {
+	lhsV, _ := expressionToAST(e.LHS)
+	rhsV, _ := expressionToAST(e.RHS)
+	return ast.String(astValueToSimpleString(lhsV) + " " + hclexpr.BinaryOpSymbol(e.Op) + " " + astValueToSimpleString(rhsV))
+}
+
+func expressionToASTUnaryOpExpr(e *hclsyntax.UnaryOpExpr) ast.Value {
+	valV, _ := expressionToAST(e.Val)
+	return ast.String(hclexpr.UnaryOpSymbol(e.Op) + astValueToSimpleString(valV))
+}
+
+func expressionToASTForExpr(e *hclsyntax.ForExpr) ast.Value {
+	collV, _ := expressionToAST(e.CollExpr)
+	valV, _ := expressionToAST(e.ValExpr)
+	collStr := astValueToSimpleString(collV)
+	valStr := astValueToSimpleString(valV)
+	var b strings.Builder
+	if e.KeyExpr != nil {
+		keyV, _ := expressionToAST(e.KeyExpr)
+		keyStr := astValueToSimpleString(keyV)
+		b.WriteString("{for ")
+		b.WriteString(e.KeyVar)
+		b.WriteString(", ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(keyStr)
+		b.WriteString(" => ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condV, _ := expressionToAST(e.CondExpr)
+			b.WriteString(" if ")
+			b.WriteString(astValueToSimpleString(condV))
+		}
+		b.WriteString("}")
+	} else {
+		b.WriteString("[for ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condV, _ := expressionToAST(e.CondExpr)
+			b.WriteString(" if ")
+			b.WriteString(astValueToSimpleString(condV))
+		}
+		b.WriteString("]")
+	}
+	return ast.String(b.String())
+}
+
+func expressionToASTSplatExpr(e *hclsyntax.SplatExpr) ast.Value {
+	sourceV, _ := expressionToAST(e.Source)
+	base := astValueToSimpleString(sourceV) + "[*]"
+	if e.Each != nil && e.Each != e.Source {
+		eachV, err := expressionToAST(e.Each)
+		if err == nil {
+			eachStr := astValueToSimpleString(eachV)
+			if eachStr == base || strings.HasPrefix(eachStr, base) {
+				return ast.String(eachStr)
+			}
+		}
+	}
+	return ast.String(base)
 }
 
 func scopeTraversalPath(t hcl.Traversal) string {

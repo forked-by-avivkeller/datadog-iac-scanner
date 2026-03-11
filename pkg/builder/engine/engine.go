@@ -63,6 +63,91 @@ func (v *engineVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (string, er
 func (v *engineVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (string, error) {
 	return "", fmt.Errorf("can't convert expression %T to string", e)
 }
+func (v *engineVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (string, error) {
+	lhs, err := v.e.ExpToString(v.ctx, e.LHS)
+	if err != nil {
+		return "", err
+	}
+	rhs, err := v.e.ExpToString(v.ctx, e.RHS)
+	if err != nil {
+		return "", err
+	}
+	return lhs + " " + hclexpr.BinaryOpSymbol(e.Op) + " " + rhs, nil
+}
+func (v *engineVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (string, error) {
+	valStr, err := v.e.ExpToString(v.ctx, e.Val)
+	if err != nil {
+		return "", err
+	}
+	return hclexpr.UnaryOpSymbol(e.Op) + valStr, nil
+}
+func (v *engineVisitor) VisitForExpr(e *hclsyntax.ForExpr) (string, error) {
+	collStr, err := v.e.ExpToString(v.ctx, e.CollExpr)
+	if err != nil {
+		return "", err
+	}
+	valStr, err := v.e.ExpToString(v.ctx, e.ValExpr)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	if e.KeyExpr != nil {
+		keyStr, err := v.e.ExpToString(v.ctx, e.KeyExpr)
+		if err != nil {
+			return "", err
+		}
+		b.WriteString("{for ")
+		b.WriteString(e.KeyVar)
+		b.WriteString(", ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(keyStr)
+		b.WriteString(" => ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condStr, err := v.e.ExpToString(v.ctx, e.CondExpr)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(" if ")
+			b.WriteString(condStr)
+		}
+		b.WriteString("}")
+	} else {
+		b.WriteString("[for ")
+		b.WriteString(e.ValVar)
+		b.WriteString(" in ")
+		b.WriteString(collStr)
+		b.WriteString(" : ")
+		b.WriteString(valStr)
+		if e.CondExpr != nil {
+			condStr, err := v.e.ExpToString(v.ctx, e.CondExpr)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(" if ")
+			b.WriteString(condStr)
+		}
+		b.WriteString("]")
+	}
+	return b.String(), nil
+}
+func (v *engineVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (string, error) {
+	sourceStr, err := v.e.ExpToString(v.ctx, e.Source)
+	if err != nil {
+		return "", err
+	}
+	base := sourceStr + "[*]"
+	if e.Each != nil && e.Each != e.Source {
+		eachStr, err := v.e.ExpToString(v.ctx, e.Each)
+		if err == nil && (eachStr == base || strings.HasPrefix(eachStr, base)) {
+			return eachStr, nil
+		}
+	}
+	return base, nil
+}
 func (v *engineVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	log := logger.FromContext(v.ctx)
 	log.Error().Msgf("can't convert expression %T to string", e)

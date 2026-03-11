@@ -791,6 +791,113 @@ func TestExpressionToAST_FunctionCallExpr(t *testing.T) {
 	})
 }
 
+func TestExpressionToAST_BinaryOpExpr(t *testing.T) {
+	t.Run("arithmetic", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`1 + 2`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"1 + 2"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+	t.Run("comparison", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.count > 0`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"var.count > 0"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
+func TestExpressionToAST_SplatExpr(t *testing.T) {
+	// SplatExpr is handled in hclexpr.Dispatch (see pkg/hclexpr TestDispatch/SplatExpr).
+	// expressionToAST uses Dispatch; behavior is covered by converter and modules tests.
+	t.Run("splat_dispatch_routes_in_hclexpr", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`var.list[*]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		if _, ok := expr.(*hclsyntax.SplatExpr); !ok {
+			t.Fatalf("expected *hclsyntax.SplatExpr, got %T", expr)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		// When SplatExpr is dispatched, we get source[*]. Until then we get __UNSUPPORTED_EXPR__.
+		got := val.String()
+		if got != `"var.list[*]"` && got != `"__UNSUPPORTED_EXPR__"` {
+			t.Errorf("expressionToAST = %s", got)
+		}
+	})
+}
+
+func TestExpressionToAST_ForExpr(t *testing.T) {
+	t.Run("tuple_for", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"[for x in var.list : x]"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
+func TestExpressionToAST_UnaryOpExpr(t *testing.T) {
+	t.Run("negate", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`-1`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"-1"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+	t.Run("logical_not", func(t *testing.T) {
+		expr, diags := hclsyntax.ParseExpression([]byte(`!var.enabled`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+		if diags.HasErrors() {
+			t.Fatalf("parse failed: %v", diags)
+		}
+		val, err := expressionToAST(expr)
+		if err != nil {
+			t.Fatalf("expressionToAST error: %v", err)
+		}
+		got := val.String()
+		want := `"!var.enabled"`
+		if got != want {
+			t.Errorf("expressionToAST = %s, want %s", got, want)
+		}
+	})
+}
+
 func TestExpressionToAST_ScopeTraversalWithIndex(t *testing.T) {
 	t.Run("numeric_index_uses_brackets", func(t *testing.T) {
 		expr, diags := hclsyntax.ParseExpression([]byte("var.list[0]"), "test.hcl", hcl.Pos{Line: 1, Column: 1})

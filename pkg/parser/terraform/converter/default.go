@@ -258,6 +258,18 @@ func (v *converterExprVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (int
 func (v *converterExprVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (interface{}, error) {
 	return v.c.tryEvalExpression(e)
 }
+func (v *converterExprVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
+func (v *converterExprVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
+func (v *converterExprVisitor) VisitForExpr(e *hclsyntax.ForExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
+func (v *converterExprVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
 func (v *converterExprVisitor) VisitDefault(e hclsyntax.Expression) (interface{}, error) {
 	return v.c.tryEvalExpression(e)
 }
@@ -387,6 +399,18 @@ func (v *converterStringPartVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr
 }
 func (v *converterStringPartVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (string, error) {
 	return v.c.convertTemplateFor(e.Tuple.(*hclsyntax.ForExpr))
+}
+func (v *converterStringPartVisitor) VisitBinaryOp(e *hclsyntax.BinaryOpExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitUnaryOp(e *hclsyntax.UnaryOpExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitForExpr(e *hclsyntax.ForExpr) (string, error) {
+	return v.c.convertTemplateFor(e)
+}
+func (v *converterStringPartVisitor) VisitSplatExpr(e *hclsyntax.SplatExpr) (string, error) {
+	return v.c.tryEvalToString(e)
 }
 func (v *converterStringPartVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
 	val, _ := e.Value(&hcl.EvalContext{Variables: v.c.inputVars})
