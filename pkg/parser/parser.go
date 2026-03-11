@@ -22,10 +22,10 @@ type kindParser interface {
 	GetCommentToken() string
 	SupportedExtensions() []string
 	SupportedTypes() map[string]bool
-	Parse(ctx context.Context, filePath string, fileContent []byte) ([]model.Document, []int, error)
-	Resolve(ctx context.Context, fileContent []byte, filename string, _ bool, _ int) ([]byte, error)
+	Parse(ctx context.Context,
+		fileContent []byte,
+		filename string, _ bool, _ int) ([]byte, []model.Document, []int, map[string]model.ResolvedFile, error)
 	StringifyContent(content []byte) (string, error)
-	GetResolvedFiles() map[string]model.ResolvedFile
 }
 
 // Builder is a representation of parsers that will be construct
@@ -141,11 +141,7 @@ func (c *Parser) Parse(
 	fileContent = utils.DecryptAnsibleVault(ctx, fileContent, os.Getenv("ANSIBLE_VAULT_PASSWORD_FILE"))
 
 	if c.isValidExtension(ctx, filePath) {
-		resolved, err := c.parsers.Resolve(ctx, fileContent, filePath, openAPIResolveReferences, maxResolverDepth)
-		if err != nil {
-			return ParsedDocument{}, err
-		}
-		obj, igLines, err := c.parsers.Parse(ctx, filePath, resolved)
+		resolved, obj, igLines, resolvedFiles, err := c.parsers.Parse(ctx, fileContent, filePath, openAPIResolveReferences, maxResolverDepth)
 		if err != nil {
 			return ParsedDocument{}, err
 		}
@@ -162,7 +158,7 @@ func (c *Parser) Parse(
 			Content:       cont,
 			IgnoreLines:   igLines,
 			CountLines:    bytes.Count(resolved, []byte{'\n'}) + 1,
-			ResolvedFiles: c.parsers.GetResolvedFiles(),
+			ResolvedFiles: resolvedFiles,
 			IsMinified:    isMinified,
 		}, nil
 	}

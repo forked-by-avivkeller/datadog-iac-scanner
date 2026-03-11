@@ -7,7 +7,6 @@ package json
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
@@ -46,7 +45,7 @@ func TestParser_Parse(t *testing.T) {
 	ctx := context.Background()
 	p := &Parser{}
 
-	doc, _, err := p.Parse(ctx, "test.json", []byte(have))
+	_, doc, _, _, err := p.Parse(ctx, []byte(have), "test.json", true, 15)
 	require.NoError(t, err)
 	require.Len(t, doc, 1)
 	require.Contains(t, doc[0], "martin")
@@ -57,7 +56,7 @@ func Test_Resolve(t *testing.T) {
 	ctx := context.Background()
 	parser := &Parser{}
 
-	resolved, err := parser.Resolve(ctx, []byte(have), "test.json", true, 15)
+	resolved, _, err := parser.Resolve(ctx, []byte(have), "test.json", true, 15)
 	require.NoError(t, err)
 	require.Equal(t, have, string(resolved))
 }
@@ -119,46 +118,6 @@ func TestJSON_StringifyContent(t *testing.T) {
 			got, err := tt.fields.parser.StringifyContent(tt.args.content)
 			require.Equal(t, tt.wantErr, (err != nil))
 			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestParser_GetResolvedFiles(t *testing.T) {
-	type fields struct {
-		shouldIdent   bool
-		resolvedFiles map[string]model.ResolvedFile
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   map[string]model.ResolvedFile
-	}{
-		{
-			name: "test get resolved files",
-			fields: fields{
-				shouldIdent: true,
-				resolvedFiles: map[string]model.ResolvedFile{
-					"test.json": {
-						Content: []byte(`{"key":"value"}`),
-					},
-				},
-			},
-			want: map[string]model.ResolvedFile{
-				"test.json": {
-					Content: []byte(`{"key":"value"}`),
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{
-				shouldIdent:   tt.fields.shouldIdent,
-				resolvedFiles: tt.fields.resolvedFiles,
-			}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }

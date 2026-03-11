@@ -541,7 +541,7 @@ func TestDocument_UnmarshalYAML(t *testing.T) {
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.m.UnmarshalYAML(ctx, tt.args.value); (err != nil) != tt.wantErr {
+			if err := tt.m.UnmarshalYAML(ctx, tt.args.value, nil); (err != nil) != tt.wantErr {
 				t.Errorf("Document.UnmarshalYAML() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			compareJSONLine(t, tt.m, tt.want)
@@ -612,9 +612,9 @@ func TestDocument_UnmarshalYAML_CircularReference(t *testing.T) {
 	t.Run("new_code_succeeds", func(t *testing.T) {
 		ctx := context.Background()
 		doc := &Document{}
-
+		ignore := &Ignore{}
 		// This should not cause a stack overflow with the fix
-		err := doc.UnmarshalYAML(ctx, node1)
+		err := doc.UnmarshalYAML(ctx, node1, ignore)
 		require.NoError(t, err)
 
 		// Verify the document was parsed (even with nil values for circular refs)
@@ -643,7 +643,7 @@ enabled: true
 	require.Len(t, root.Content, 1)
 
 	doc := &Document{}
-	err = doc.UnmarshalYAML(ctx, root.Content[0])
+	err = doc.UnmarshalYAML(ctx, root.Content[0], nil)
 	require.NoError(t, err)
 
 	// Values go through JSON round-trip so numbers become float64 in Document

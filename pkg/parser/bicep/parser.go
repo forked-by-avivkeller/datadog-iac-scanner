@@ -197,11 +197,17 @@ func makeResourcesNestedStructure(jBicep *JSONBicep) []interface{} {
 }
 
 // Parse - parses bicep to BicepVisitor template (json file)
-func (p *Parser) Parse(ctx context.Context, file string, _ []byte) ([]model.Document, []int, error) {
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	err error) {
 	bicepVisitor := NewBicepVisitor()
-	stream, err := antlr.NewFileStream(file)
+	stream, err := antlr.NewFileStream(filePath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	lexer := parser.NewbicepLexer(stream)
 
@@ -225,15 +231,15 @@ func (p *Parser) Parse(ctx context.Context, file string, _ []byte) ([]model.Docu
 
 	bicepBytes, err := json.Marshal(jBicep)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	err = json.Unmarshal(bicepBytes, &doc)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return []model.Document{doc}, nil, nil
+	return fileContent, []model.Document{doc}, nil, map[string]model.ResolvedFile{}, nil
 }
 
 func (s *BicepVisitor) VisitProgram(ctx *parser.ProgramContext) interface{} {
@@ -872,14 +878,4 @@ func (p *Parser) GetCommentToken() string {
 // StringifyContent converts original content into string formatted version
 func (p *Parser) StringifyContent(content []byte) (string, error) {
 	return string(content), nil
-}
-
-// Resolve resolves bicep files variables
-func (p *Parser) Resolve(ctx context.Context, fileContent []byte, _ string, _ bool, _ int) ([]byte, error) {
-	return fileContent, nil
-}
-
-// GetResolvedFiles returns the list of files that are resolved
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
-	return make(map[string]model.ResolvedFile)
 }

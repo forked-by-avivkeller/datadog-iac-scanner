@@ -34,19 +34,19 @@ type Command struct {
 	JSON      bool
 }
 
-// Resolve - replace or modifies in-memory content before parsing
-func (p *Parser) Resolve(ctx context.Context, fileContent []byte, _ string, _ bool, _ int) ([]byte, error) {
-	return fileContent, nil
-}
-
 // Parse - parses dockerfile to Json
-func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]model.Document, []int, error) {
-	var documents []model.Document
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	err error) {
 	reader := bytes.NewReader(fileContent)
 
 	parsed, err := parser.Parse(reader)
 	if err != nil {
-		return nil, []int{}, errors.Wrap(err, "failed to parse Dockerfile")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to parse Dockerfile")
 	}
 
 	fromValue := ""
@@ -113,18 +113,18 @@ func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]mod
 
 	j, err := json.Marshal(resource)
 	if err != nil {
-		return nil, []int{}, errors.Wrap(err, "failed to Marshal Dockerfile")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to Marshal Dockerfile")
 	}
 
 	if err := json.Unmarshal(j, &doc); err != nil {
-		return nil, []int{}, errors.Wrap(err, "failed to Unmarshal Dockerfile")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to Unmarshal Dockerfile")
 	}
 
 	documents = append(documents, *doc)
 
-	ignoreLines := ignoreStruct.getIgnoreLines()
+	ignoreLines = ignoreStruct.getIgnoreLines()
 
-	return documents, ignoreLines, nil
+	return fileContent, documents, ignoreLines, resolvedFiles, nil
 }
 
 // GetKind returns the kind of the parser
@@ -150,11 +150,6 @@ func (p *Parser) GetCommentToken() string {
 // StringifyContent converts original content into string formatted version
 func (p *Parser) StringifyContent(content []byte) (string, error) {
 	return string(content), nil
-}
-
-// GetResolvedFiles returns the list of files that are resolved
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
-	return make(map[string]model.ResolvedFile)
 }
 
 func resolveArgsAndEnvs(values []string, args map[string]string) []string {

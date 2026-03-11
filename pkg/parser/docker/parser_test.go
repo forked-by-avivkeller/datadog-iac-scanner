@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
@@ -83,7 +82,7 @@ func TestParser_Parse(t *testing.T) {
 	}
 
 	for idx, sampleFile := range sample {
-		doc, igLines, err := p.Parse(ctx, "Dockerfile", []byte(sampleFile))
+		_, doc, igLines, _, err := p.Parse(ctx, []byte(sampleFile), "Dockerfile", true, 15)
 		switch idx {
 		case 0:
 			require.NoError(t, err)
@@ -134,27 +133,6 @@ func TestParser_Parse(t *testing.T) {
 			require.Contains(t, c.([]interface{})[0].(map[string]interface{})["Value"].([]interface{})[0], "alpine:latest=")
 		}
 	}
-}
-
-// Test_Resolve tests the functions [Resolve()] and all the methods called by them
-func Test_Resolve(t *testing.T) {
-	ctx := context.Background()
-	parser := &Parser{}
-	have := `
-		FROM openjdk:11-jdk
-		VOLUME /tmp
-		ADD http://source.file/package.file.tar.gz /temp
-		RUN tar --xjf /temp/package.file.tar.gz \
-  			&& make -C /tmp/package.file \
-  			&& rm /tmp/ package.file.tar.gz
-		ARG JAR_FILE
-		ADD ${JAR_FILE} app.jar
-		ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
-		`
-
-	resolved, err := parser.Resolve(ctx, []byte(have), "Dockerfile", true, 15)
-	require.NoError(t, err)
-	require.Equal(t, []byte(have), resolved)
 }
 
 // Test_GetCommentToken must get the token that represents a comment
@@ -215,26 +193,6 @@ ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 			got, err := tt.fields.parser.StringifyContent(tt.args.content)
 			require.Equal(t, tt.wantErr, (err != nil))
 			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestParser_GetResolvedFiles(t *testing.T) {
-	tests := []struct {
-		name string
-		want map[string]model.ResolvedFile
-	}{
-		{
-			name: "test get resolved files",
-			want: map[string]model.ResolvedFile{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }

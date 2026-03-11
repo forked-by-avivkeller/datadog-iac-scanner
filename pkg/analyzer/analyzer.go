@@ -581,7 +581,7 @@ func checkYamlPlatform(ctx context.Context, content []byte, path string) string 
 	}
 
 	var yamlContent model.Document
-	if err := yamlContent.UnmarshalYAML(ctx, contentNode); err != nil {
+	if err := yamlContent.UnmarshalYAML(ctx, contentNode, nil); err != nil {
 		contextLogger.Warn().Msgf("failed to unmarshal yaml file (%s): %s", path, err)
 		return ""
 	}

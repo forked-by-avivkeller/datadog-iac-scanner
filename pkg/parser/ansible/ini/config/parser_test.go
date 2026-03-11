@@ -84,7 +84,7 @@ profile_tasks = yes
 			p := &Parser{}
 			switch i {
 			case 0:
-				got, _, err := p.Parse(ctx, "", tt.args.content)
+				_, got, _, _, err := p.Parse(ctx, tt.args.content, "", true, 15)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("Parser() error = %v, wantErr %v", err, tt.wantErr)
 					return

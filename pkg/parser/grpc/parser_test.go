@@ -361,7 +361,7 @@ func TestParser_Parse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
-			got, got1, err := p.Parse(ctx, tt.args.in0, tt.args.fileContent)
+			_, got, got1, _, err := p.Parse(ctx, tt.args.fileContent, tt.args.in0, true, 15)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parser.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -504,66 +504,6 @@ import "google/protobuf/descriptor.proto";`,
 			}
 			if got != tt.want {
 				t.Errorf("Parser.StringifyContent() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-// TestParser_Resolve tests the Resolve function
-func TestParser_Resolve(t *testing.T) {
-	type args struct {
-		fileContent []byte
-		filename    string
-	}
-	tests := []struct {
-		name    string
-		p       *Parser
-		args    args
-		want    []byte
-		wantErr bool
-	}{
-		{
-			name: "grpc resolve",
-			p:    &Parser{},
-			args: args{
-				fileContent: []byte(``),
-				filename:    "test.proto",
-			},
-			want: []byte{},
-		},
-	}
-
-	ctx := context.Background()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{}
-			got, err := p.Resolve(ctx, tt.args.fileContent, tt.args.filename, true, 15)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Parser.Resolve() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Parser.Resolve() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestParser_GetResolvedFiles(t *testing.T) {
-	tests := []struct {
-		name string
-		want map[string]model.ResolvedFile
-	}{
-		{
-			name: "grpc get resolved files",
-			want: map[string]model.ResolvedFile{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
 			}
 		})
 	}

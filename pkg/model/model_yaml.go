@@ -16,8 +16,8 @@ import (
 )
 
 // UnmarshalYAML is a custom yaml parser that places line information in the payload
-func (m *Document) UnmarshalYAML(ctx context.Context, value *yaml.Node) error {
-	dpc := unmarshal(ctx, value)
+func (m *Document) UnmarshalYAML(ctx context.Context, value *yaml.Node, ignore *Ignore) error {
+	dpc := unmarshal(ctx, value, ignore)
 	if mapDcp, ok := dpc.(map[string]interface{}); ok {
 		// set line information for root level objects
 		mapDcp["_kics_lines"] = getLines(value, 0)
@@ -40,19 +40,21 @@ func (m *Document) UnmarshalYAML(ctx context.Context, value *yaml.Node) error {
 */
 // unmarshal is the function that will parse the yaml elements and call the functions needed
 // to place their line information in the payload
-func unmarshal(ctx context.Context, val *yaml.Node) interface{} {
-	return unmarshalWithDepth(ctx, val, make(map[*yaml.Node]bool))
+func unmarshal(ctx context.Context, val *yaml.Node, ignore *Ignore) interface{} {
+	return unmarshalWithDepth(ctx, val, make(map[*yaml.Node]bool), ignore)
 }
 
 // unmarshalWithDepth handles recursive unmarshaling with circular reference detection
-func unmarshalWithDepth(ctx context.Context, val *yaml.Node, visited map[*yaml.Node]bool) interface{} { //nolint:gocyclo
+func unmarshalWithDepth(ctx context.Context, val *yaml.Node, visited map[*yaml.Node]bool, ignore *Ignore) interface{} { //nolint:gocyclo
 	if visited[val] {
 		return nil
 	}
 	visited[val] = true
 	defer func() { delete(visited, val) }()
 	tmp := make(map[string]interface{})
-	ignoreCommentsYAML(val)
+	if ignore != nil {
+		ignore.ignoreCommentsYAML(val)
+	}
 
 	// if Yaml Node is an Array than we are working with ansible
 	// which need to be placed inside "playbooks"
@@ -60,7 +62,7 @@ func unmarshalWithDepth(ctx context.Context, val *yaml.Node, visited map[*yaml.N
 	if val.Kind == yaml.SequenceNode {
 		contentArray := make([]interface{}, 0)
 		for _, contentEntry := range val.Content {
-			contentArray = append(contentArray, unmarshalWithDepth(ctx, contentEntry, visited))
+			contentArray = append(contentArray, unmarshalWithDepth(ctx, contentEntry, visited, ignore))
 		}
 		tmp["playbooks"] = contentArray
 	} else if val.Kind == yaml.ScalarNode {
@@ -75,7 +77,7 @@ func unmarshalWithDepth(ctx context.Context, val *yaml.Node, visited map[*yaml.N
 				// in case value iteration is a map
 				case yaml.MappingNode:
 					// unmarshall map value and get its line information
-					result := unmarshalWithDepth(ctx, val.Content[i+1], visited)
+					result := unmarshalWithDepth(ctx, val.Content[i+1], visited, ignore)
 					if tt, ok := result.(map[string]interface{}); ok {
 						tt["_kics_lines"] = getLines(val.Content[i+1], val.Content[i].Line)
 						tmp[val.Content[i].Value] = tt
@@ -87,12 +89,12 @@ func unmarshalWithDepth(ctx context.Context, val *yaml.Node, visited map[*yaml.N
 					contentArray := make([]interface{}, 0)
 					// unmarshall each iteration of the array
 					for _, contentEntry := range val.Content[i+1].Content {
-						contentArray = append(contentArray, unmarshalWithDepth(ctx, contentEntry, visited))
+						contentArray = append(contentArray, unmarshalWithDepth(ctx, contentEntry, visited, ignore))
 					}
 					tmp[val.Content[i].Value] = contentArray
 				case yaml.AliasNode:
 					if val.Content[i+1].Alias != nil {
-						result := unmarshalWithDepth(ctx, val.Content[i+1].Alias, visited)
+						result := unmarshalWithDepth(ctx, val.Content[i+1].Alias, visited, ignore)
 						if tt, ok := result.(map[string]interface{}); ok {
 							tt["_kics_lines"] = getLines(val.Content[i+1], val.Content[i].Line)
 							utils.MergeMaps(tmp, tt)

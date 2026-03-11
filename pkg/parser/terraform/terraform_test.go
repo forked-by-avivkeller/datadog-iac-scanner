@@ -8,12 +8,8 @@ package terraform
 import (
 	"context"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/DataDog/datadog-iac-scanner/pkg/parser/terraform/converter"
-	"github.com/hashicorp/hcl/v2"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
 	"github.com/stretchr/testify/require"
@@ -128,7 +124,7 @@ func TestParser_SupportedExtensions(t *testing.T) {
 func Test_Parser(t *testing.T) {
 	ctx := context.Background()
 	parser := NewDefault()
-	document, linesToIgnore, err := parser.Parse(ctx, "test.tf", []byte(have))
+	_, document, linesToIgnore, _, err := parser.Parse(ctx, []byte(have), "test.tf", true, 15)
 
 	require.Equal(t, []int{8, 9, 10, 11, 5, 4, 6}, linesToIgnore)
 	require.NoError(t, err)
@@ -137,7 +133,7 @@ func Test_Parser(t *testing.T) {
 	require.Contains(t, document[0]["resource"], "aws_s3_bucket")
 
 	// case where we fail to parse the file and a fatal error is thrown caught with recover
-	document, linesToIgnore, err = parser.Parse(ctx, "test.tf", []byte(conditionalValResource))
+	_, document, linesToIgnore, _, err = parser.Parse(ctx, []byte(conditionalValResource), "test.tf", true, 15)
 	require.NoError(t, err)
 	require.Len(t, document, 0)
 	require.Len(t, linesToIgnore, 0)
@@ -148,7 +144,7 @@ func Test_Parser(t *testing.T) {
 func Test_Count(t *testing.T) {
 	ctx := context.Background()
 	parser := NewDefault()
-	document, _, err := parser.Parse(ctx, "count.tf", []byte(count))
+	_, document, _, _, err := parser.Parse(ctx, []byte(count), "count.tf", true, 15)
 	require.NoError(t, err)
 	require.Len(t, document, 1)
 	require.Contains(t, document[0], "resource")
@@ -161,9 +157,10 @@ func Test_Parentheses_Expr(t *testing.T) {
 	ctx := context.Background()
 	parser := NewDefault()
 	// Call Resolve first to set up input variables
-	_, err := parser.Resolve(ctx, []byte(parentheses), filepath.FromSlash("../../../test/fixtures/test-tf-parentheses/parentheses.tf"), false, 0)
+	fullPath := filepath.FromSlash("../../../test/fixtures/test-tf-parentheses/parentheses.tf")
+	_, _, err := parser.Resolve(ctx, []byte(parentheses), fullPath, false, 0)
 	require.NoError(t, err)
-	document, _, err := parser.Parse(ctx, "parentheses.tf", []byte(parentheses))
+	_, document, _, _, err := parser.Parse(ctx, []byte(parentheses), fullPath, true, 15)
 	require.NoError(t, err)
 	require.Len(t, document, 1)
 	require.Contains(t, document[0], "data")
@@ -175,7 +172,7 @@ func Test_Parentheses_Expr(t *testing.T) {
 func Test_namelessResource(t *testing.T) {
 	ctx := context.Background()
 	parser := NewDefault()
-	document, _, err := parser.Parse(ctx, "namelessResource.tf", []byte(namelessResource))
+	_, document, _, _, err := parser.Parse(ctx, []byte(namelessResource), "namelessResource.tf", true, 15)
 	require.NoError(t, err)
 	require.Len(t, document, 1)
 	require.Contains(t, document[0], "resource")
@@ -191,7 +188,7 @@ func Test_Resolve(t *testing.T) {
 	ctx := context.Background()
 	parser := NewDefault()
 
-	resolved, err := parser.Resolve(ctx, []byte(have), "test.tf", true, 15)
+	resolved, _, err := parser.Resolve(ctx, []byte(have), "test.tf", true, 15)
 	require.NoError(t, err)
 	require.Equal(t, []byte(have), resolved)
 }
@@ -386,39 +383,6 @@ data "aws_iam_policy_document" "test_destination_policy" {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, strings.ReplaceAll(string(parsedFile.Bytes), "\r", ""))
-			}
-		})
-	}
-}
-
-func TestParser_GetResolvedFiles(t *testing.T) {
-	type fields struct {
-		convertFunc  Converter
-		numOfRetries int
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   map[string]model.ResolvedFile
-	}{
-		{
-			name: "Should get resolved files",
-			fields: fields{
-				convertFunc: func(ctx context.Context, file *hcl.File, inputVariables converter.VariableMap) (model.Document, error) {
-					return nil, nil
-				},
-			},
-			want: map[string]model.ResolvedFile{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{
-				convertFunc:  tt.fields.convertFunc,
-				numOfRetries: tt.fields.numOfRetries,
-			}
-			if got := p.GetResolvedFiles(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetResolvedFiles() = %v, want %v", got, tt.want)
 			}
 		})
 	}

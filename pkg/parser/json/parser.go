@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"maps"
 	"sync"
 
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
@@ -18,55 +17,61 @@ import (
 
 // Parser defines a parser type
 type Parser struct {
-	shouldIdent     bool
-	shouldIdentMu   sync.RWMutex
-	resolvedFiles   map[string]model.ResolvedFile
-	resolvedFilesMu sync.RWMutex
+	shouldIdent   bool
+	shouldIdentMu sync.RWMutex
 }
 
 // Resolve - replace or modifies in-memory content before parsing
 func (p *Parser) Resolve(ctx context.Context, fileContent []byte, filename string,
-	resolveReferences bool, maxResolverDepth int) ([]byte, error) {
+	resolveReferences bool, maxResolverDepth int) (resolved []byte, resolvedFiles map[string]model.ResolvedFile, err error) {
 	// Resolve files passed as arguments with file resolver (e.g. file://)
 	res := file.NewResolver(json.Unmarshal, json.Marshal, p.SupportedExtensions())
 	resolvedFilesCache := make(map[string]file.ResolvedFile)
-	resolved := res.Resolve(ctx, fileContent, filename, 0, maxResolverDepth, resolvedFilesCache, resolveReferences)
-
-	p.resolvedFilesMu.Lock()
-	p.resolvedFiles = res.ResolvedFiles
-	p.resolvedFilesMu.Unlock()
+	resolved = res.Resolve(ctx, fileContent, filename, 0, maxResolverDepth, resolvedFilesCache, resolveReferences)
 
 	if len(res.ResolvedFiles) == 0 {
-		return fileContent, nil
+		return fileContent, res.ResolvedFiles, nil
 	}
-	return resolved, nil
+
+	return resolved, res.ResolvedFiles, nil
 }
 
 // Parse parses json file and returns it as a Document
-func (p *Parser) Parse(ctx context.Context, _ string, fileContent []byte) ([]model.Document, []int, error) {
-	r := model.Document{}
-	err := json.Unmarshal(fileContent, &r)
+func (p *Parser) Parse(ctx context.Context, fileContent []byte, filePath string,
+	resolveReferences bool, maxResolverDepth int) (
+	resolved []byte,
+	documents []model.Document,
+	ignoreLines []int,
+	resolvedFiles map[string]model.ResolvedFile,
+	err error) {
+	resolved, resolvedFiles, err = p.Resolve(ctx, fileContent, filePath, resolveReferences, maxResolverDepth)
 	if err != nil {
-		var r []model.Document
-		err = json.Unmarshal(fileContent, &r)
-		return r, []int{}, err
+		return nil, nil, nil, nil, err
 	}
 
-	jLine := initializeJSONLine(fileContent)
+	r := model.Document{}
+	err = json.Unmarshal(resolved, &r)
+	if err != nil {
+		var r []model.Document
+		err = json.Unmarshal(resolved, &r)
+		return nil, r, nil, resolvedFiles, err
+	}
+
+	jLine := initializeJSONLine(resolved)
 	kicsJSON := jLine.setLineInfo(r)
 
 	// Try to parse JSON as Terraform plan
 	kicsPlan, err := parseTFPlan(kicsJSON)
 	if err != nil {
 		// JSON is not a tf plan
-		return []model.Document{kicsJSON}, []int{}, nil
+		return resolved, []model.Document{kicsJSON}, nil, resolvedFiles, nil
 	}
 
 	p.shouldIdentMu.Lock()
 	p.shouldIdent = true
 	p.shouldIdentMu.Unlock()
 
-	return []model.Document{kicsPlan}, []int{}, nil
+	return resolved, []model.Document{kicsPlan}, nil, resolvedFiles, nil
 }
 
 // SupportedExtensions returns extensions supported by this parser, which is json extension
@@ -111,13 +116,4 @@ func (p *Parser) StringifyContent(content []byte) (string, error) {
 		return out.String(), nil
 	}
 	return string(content), nil
-}
-
-// GetResolvedFiles returns resolved files
-func (p *Parser) GetResolvedFiles() map[string]model.ResolvedFile {
-	p.resolvedFilesMu.RLock()
-	defer p.resolvedFilesMu.RUnlock()
-	resolvedFiles := make(map[string]model.ResolvedFile, len(p.resolvedFiles))
-	maps.Copy(resolvedFiles, p.resolvedFiles)
-	return resolvedFiles
 }

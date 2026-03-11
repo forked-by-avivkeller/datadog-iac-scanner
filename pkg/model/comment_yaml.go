@@ -8,7 +8,6 @@ package model
 import (
 	"reflect"
 	"strings"
-	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -22,40 +21,23 @@ type Ignore struct {
 	Lines []int
 }
 
-var (
-	// NewIgnore is the ignore struct
-	NewIgnore = &Ignore{}
-	memoryMu  sync.Mutex
-)
-
 // build builds the ignore struct
 func (i *Ignore) build(lines []int) {
-	memoryMu.Lock()
-	defer memoryMu.Unlock()
 	i.Lines = append(i.Lines, lines...)
 }
 
 // GetLines returns the lines to ignore
 func (i *Ignore) GetLines() []int {
-	memoryMu.Lock()
-	defer memoryMu.Unlock()
 	return RemoveDuplicates(i.Lines)
 }
 
-// Reset resets the ignore struct
-func (i *Ignore) Reset() {
-	memoryMu.Lock()
-	defer memoryMu.Unlock()
-	i.Lines = make([]int, 0)
-}
-
 // ignoreCommentsYAML sets the lines to ignore for a yaml file
-func ignoreCommentsYAML(node *yaml.Node) {
+func (ignore *Ignore) ignoreCommentsYAML(node *yaml.Node) {
 	linesIgnore := make([]int, 0)
 	if node.HeadComment != "" {
 		// Squence Node - Head Comment comes in root node
 		linesIgnore = append(linesIgnore, processCommentYAML((*comment)(&node.HeadComment), 0, node, node.Kind, false)...)
-		NewIgnore.build(linesIgnore)
+		ignore.build(linesIgnore)
 		return
 	}
 	// check if comment is in the content
@@ -69,7 +51,7 @@ func ignoreCommentsYAML(node *yaml.Node) {
 		linesIgnore = append(linesIgnore, processCommentYAML((*comment)(&content.HeadComment), i, node, node.Kind, false)...)
 	}
 
-	NewIgnore.build(linesIgnore)
+	ignore.build(linesIgnore)
 }
 
 // processCommentYAML returns the lines to ignore
