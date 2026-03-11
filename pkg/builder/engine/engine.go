@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -23,36 +24,49 @@ type Engine struct {
 
 // ExpToString converts an expression into a string
 func (e *Engine) ExpToString(ctx context.Context, expr hclsyntax.Expression) (string, error) {
-	contextLogger := logger.FromContext(ctx)
-	switch t := expr.(type) {
-	case *hclsyntax.LiteralValueExpr:
-		return e.expToStringLiteralValue(t)
-	case *hclsyntax.TemplateExpr:
-		return e.expToStringTemplateExpr(ctx, t)
-	case *hclsyntax.TemplateWrapExpr:
-		return e.ExpToString(ctx, t.Wrapped)
-	case *hclsyntax.ParenthesesExpr:
-		return e.ExpToString(ctx, t.Expression)
-	case *hclsyntax.ObjectConsKeyExpr:
-		return e.ExpToString(ctx, t.Wrapped)
-	case *hclsyntax.ScopeTraversalExpr:
-		return e.expToStringScopeTraversal(t), nil
-	case *hclsyntax.IndexExpr:
-		return e.indexExprToString(ctx, t)
-	case *hclsyntax.RelativeTraversalExpr:
-		return e.expToStringRelativeTraversal(ctx, t)
-	case *hclsyntax.FunctionCallExpr:
-		return e.expToStringFunctionCall(ctx, t)
-	case *hclsyntax.ConditionalExpr:
-		return e.expToStringConditionalExpr(ctx, t)
-	case *hclsyntax.TupleConsExpr:
-		return e.expToStringTupleConsExpr(ctx, t)
-	case *hclsyntax.ObjectConsExpr:
-		return e.expToStringObjectConsExpr(ctx, t)
-	}
-	err := fmt.Errorf("can't convert expression %T to string", expr)
-	contextLogger.Error().Msg(err.Error())
-	return "", err
+	return hclexpr.Dispatch(expr, &engineVisitor{e: e, ctx: ctx})
+}
+
+// engineVisitor implements hclexpr.Visitor[string] for ExpToString.
+type engineVisitor struct {
+	e   *Engine
+	ctx context.Context
+}
+
+func (v *engineVisitor) VisitLiteralValue(e *hclsyntax.LiteralValueExpr) (string, error) {
+	return v.e.expToStringLiteralValue(e)
+}
+func (v *engineVisitor) VisitTemplateExpr(e *hclsyntax.TemplateExpr) (string, error) {
+	return v.e.expToStringTemplateExpr(v.ctx, e)
+}
+func (v *engineVisitor) VisitScopeTraversal(e *hclsyntax.ScopeTraversalExpr) (string, error) {
+	return v.e.expToStringScopeTraversal(e), nil
+}
+func (v *engineVisitor) VisitIndexExpr(e *hclsyntax.IndexExpr) (string, error) {
+	return v.e.indexExprToString(v.ctx, e)
+}
+func (v *engineVisitor) VisitRelativeTraversal(e *hclsyntax.RelativeTraversalExpr) (string, error) {
+	return v.e.expToStringRelativeTraversal(v.ctx, e)
+}
+func (v *engineVisitor) VisitFunctionCall(e *hclsyntax.FunctionCallExpr) (string, error) {
+	return v.e.expToStringFunctionCall(v.ctx, e)
+}
+func (v *engineVisitor) VisitConditional(e *hclsyntax.ConditionalExpr) (string, error) {
+	return v.e.expToStringConditionalExpr(v.ctx, e)
+}
+func (v *engineVisitor) VisitTupleCons(e *hclsyntax.TupleConsExpr) (string, error) {
+	return v.e.expToStringTupleConsExpr(v.ctx, e)
+}
+func (v *engineVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (string, error) {
+	return v.e.expToStringObjectConsExpr(v.ctx, e)
+}
+func (v *engineVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (string, error) {
+	return "", fmt.Errorf("can't convert expression %T to string", e)
+}
+func (v *engineVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
+	log := logger.FromContext(v.ctx)
+	log.Error().Msgf("can't convert expression %T to string", e)
+	return "", fmt.Errorf("can't convert expression %T to string", e)
 }
 
 func (e *Engine) expToStringLiteralValue(t *hclsyntax.LiteralValueExpr) (string, error) {

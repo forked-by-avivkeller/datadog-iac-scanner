@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
 	"github.com/hashicorp/hcl/v2"
@@ -63,12 +64,13 @@ func isTerraformFile(filePath string) bool {
 }
 
 const (
-	stringLocal           = "local"
-	stringUnknown         = "unknown"
-	stringPublic          = "public"
-	stringRegistry        = "registry"
-	stringPrivate         = "private"
-	unresolvedPlaceholder = "__UNRESOLVED__"
+	stringLocal                 = "local"
+	stringUnknown               = "unknown"
+	stringPublic                = "public"
+	stringRegistry              = "registry"
+	stringPrivate               = "private"
+	unresolvedPlaceholder       = "__UNRESOLVED__"
+	invalidTraversalPlaceholder = "__INVALID_TRAVERSAL__"
 )
 
 // nolint:gocyclo
@@ -215,58 +217,62 @@ func getFileContent(file model.FileMetadata) string {
 
 // resolveExpr evaluates HCL expressions using known locals and vars
 func resolveExpr(expr hclsyntax.Expression, locals, vars map[string]string) string {
-	switch e := expr.(type) {
-	case *hclsyntax.LiteralValueExpr:
-		return resolveLiteralValueExpr(e)
+	s, _ := hclexpr.Dispatch(expr, &resolveExprVisitor{locals: locals, vars: vars})
+	return s
+}
 
-	case *hclsyntax.TemplateExpr:
-		return resolveTemplateExpr(e, locals, vars)
+// resolveExprVisitor implements hclexpr.Visitor[string] for resolveExpr.
+type resolveExprVisitor struct {
+	locals, vars map[string]string
+}
 
-	case *hclsyntax.ScopeTraversalExpr:
-		return resolveScopeTraversal(e, locals, vars)
-
-	case *hclsyntax.TemplateWrapExpr:
-		return resolveExpr(e.Wrapped, locals, vars)
-
-	case *hclsyntax.FunctionCallExpr:
-		return resolveFunctionCall(e, locals, vars)
-
-	case *hclsyntax.RelativeTraversalExpr:
-		return resolveRelativeTraversalExpr(e, locals, vars)
-
-	case *hclsyntax.ParenthesesExpr:
-		return resolveExpr(e.Expression, locals, vars)
-
-	case *hclsyntax.ConditionalExpr:
-		condStr := resolveExpr(e.Condition, locals, vars)
-		trueStr := resolveExpr(e.TrueResult, locals, vars)
-		falseStr := resolveExpr(e.FalseResult, locals, vars)
-		return condStr + " ? " + trueStr + " : " + falseStr
-
-	case *hclsyntax.IndexExpr:
-		collStr := resolveExpr(e.Collection, locals, vars)
-		keyStr := resolveExpr(e.Key, locals, vars)
-		return collStr + "[" + keyStr + "]"
-
-	case *hclsyntax.TupleConsExpr:
-		parts := make([]string, 0, len(e.Exprs))
-		for _, ex := range e.Exprs {
-			parts = append(parts, resolveExpr(ex, locals, vars))
-		}
-		return "[" + strings.Join(parts, ", ") + "]"
-
-	case *hclsyntax.ObjectConsExpr:
-		parts := make([]string, 0, len(e.Items))
-		for _, item := range e.Items {
-			keyStr := resolveExpr(item.KeyExpr, locals, vars)
-			valStr := resolveExpr(item.ValueExpr, locals, vars)
-			parts = append(parts, keyStr+": "+valStr)
-		}
-		return "{" + strings.Join(parts, ", ") + "}"
-
-	default:
-		return resolveExprDefault(expr)
+func (v *resolveExprVisitor) VisitLiteralValue(e *hclsyntax.LiteralValueExpr) (string, error) {
+	return resolveLiteralValueExpr(e), nil
+}
+func (v *resolveExprVisitor) VisitTemplateExpr(e *hclsyntax.TemplateExpr) (string, error) {
+	return resolveTemplateExpr(e, v.locals, v.vars), nil
+}
+func (v *resolveExprVisitor) VisitScopeTraversal(e *hclsyntax.ScopeTraversalExpr) (string, error) {
+	return resolveScopeTraversal(e, v.locals, v.vars), nil
+}
+func (v *resolveExprVisitor) VisitIndexExpr(e *hclsyntax.IndexExpr) (string, error) {
+	collStr := resolveExpr(e.Collection, v.locals, v.vars)
+	keyStr := resolveExpr(e.Key, v.locals, v.vars)
+	return collStr + "[" + keyStr + "]", nil
+}
+func (v *resolveExprVisitor) VisitRelativeTraversal(e *hclsyntax.RelativeTraversalExpr) (string, error) {
+	return resolveRelativeTraversalExpr(e, v.locals, v.vars), nil
+}
+func (v *resolveExprVisitor) VisitFunctionCall(e *hclsyntax.FunctionCallExpr) (string, error) {
+	return resolveFunctionCall(e, v.locals, v.vars), nil
+}
+func (v *resolveExprVisitor) VisitConditional(e *hclsyntax.ConditionalExpr) (string, error) {
+	condStr := resolveExpr(e.Condition, v.locals, v.vars)
+	trueStr := resolveExpr(e.TrueResult, v.locals, v.vars)
+	falseStr := resolveExpr(e.FalseResult, v.locals, v.vars)
+	return condStr + " ? " + trueStr + " : " + falseStr, nil
+}
+func (v *resolveExprVisitor) VisitTupleCons(e *hclsyntax.TupleConsExpr) (string, error) {
+	parts := make([]string, 0, len(e.Exprs))
+	for _, ex := range e.Exprs {
+		parts = append(parts, resolveExpr(ex, v.locals, v.vars))
 	}
+	return "[" + strings.Join(parts, ", ") + "]", nil
+}
+func (v *resolveExprVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (string, error) {
+	parts := make([]string, 0, len(e.Items))
+	for _, item := range e.Items {
+		keyStr := resolveExpr(item.KeyExpr, v.locals, v.vars)
+		valStr := resolveExpr(item.ValueExpr, v.locals, v.vars)
+		parts = append(parts, keyStr+": "+valStr)
+	}
+	return "{" + strings.Join(parts, ", ") + "}", nil
+}
+func (v *resolveExprVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (string, error) {
+	return resolveExprDefault(e), nil
+}
+func (v *resolveExprVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
+	return resolveExprDefault(e), nil
 }
 
 func resolveLiteralValueExpr(e *hclsyntax.LiteralValueExpr) string {
@@ -317,8 +323,14 @@ func resolveExprDefault(expr hclsyntax.Expression) string {
 
 func resolveScopeTraversal(expr *hclsyntax.ScopeTraversalExpr, locals, vars map[string]string) string {
 	traversal := expr.Traversal
-	if len(traversal) < 2 {
-		return "__INVALID_TRAVERSAL__"
+	if len(traversal) == 0 {
+		return invalidTraversalPlaceholder
+	}
+	if len(traversal) == 1 {
+		if root, ok := traversal[0].(hcl.TraverseRoot); ok {
+			return root.Name
+		}
+		return invalidTraversalPlaceholder
 	}
 
 	root := traversal[0].(hcl.TraverseRoot).Name

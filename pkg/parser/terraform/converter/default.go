@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
 	"github.com/DataDog/datadog-iac-scanner/pkg/parser/terraform/functions"
@@ -204,42 +205,61 @@ func (c *converter) convertBlock(ctx context.Context, block *hclsyntax.Block, ou
 }
 
 func (c *converter) convertExpression(expr hclsyntax.Expression) (interface{}, error) {
-	// assume it is hcl syntax (because, um, it is)
-	switch value := expr.(type) {
-	case *hclsyntax.LiteralValueExpr:
-		return ctyjson.SimpleJSONValue{Value: value.Val}, nil
-	case *hclsyntax.TemplateExpr:
-		return c.convertTemplate(value)
-	case *hclsyntax.TemplateWrapExpr:
-		return c.convertExpression(value.Wrapped)
-	case *hclsyntax.TupleConsExpr:
-		list := make([]interface{}, 0)
-		for _, ex := range value.Exprs {
-			elem, err := c.convertExpression(ex)
-			if err != nil {
-				return nil, err
-			}
-			list = append(list, elem)
-		}
-		return list, nil
-	case *hclsyntax.ObjectConsExpr:
-		return c.objectConsExpr(value)
-	case *hclsyntax.FunctionCallExpr:
-		return c.evalFunction(expr)
-	case *hclsyntax.RelativeTraversalExpr, *hclsyntax.IndexExpr:
-		return c.tryEvalExpression(expr)
-	case *hclsyntax.ConditionalExpr:
-		expressionEvaluated, err := expr.Value(&hcl.EvalContext{
-			Variables: c.inputVars,
-			Functions: functions.TerraformFuncs,
-		})
-		if err != nil {
-			return c.wrapExpr(expr)
-		}
-		return ctyjson.SimpleJSONValue{Value: expressionEvaluated}, nil
-	default:
-		return c.tryEvalExpression(expr)
+	return hclexpr.Dispatch(expr, &converterExprVisitor{c: c})
+}
+
+// converterExprVisitor implements hclexpr.Visitor[interface{}] for convertExpression.
+type converterExprVisitor struct {
+	c *converter
+}
+
+func (v *converterExprVisitor) VisitLiteralValue(e *hclsyntax.LiteralValueExpr) (interface{}, error) {
+	return ctyjson.SimpleJSONValue{Value: e.Val}, nil
+}
+func (v *converterExprVisitor) VisitTemplateExpr(e *hclsyntax.TemplateExpr) (interface{}, error) {
+	return v.c.convertTemplate(e)
+}
+func (v *converterExprVisitor) VisitScopeTraversal(e *hclsyntax.ScopeTraversalExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
+func (v *converterExprVisitor) VisitIndexExpr(e *hclsyntax.IndexExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
+func (v *converterExprVisitor) VisitRelativeTraversal(e *hclsyntax.RelativeTraversalExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
+func (v *converterExprVisitor) VisitFunctionCall(e *hclsyntax.FunctionCallExpr) (interface{}, error) {
+	return v.c.evalFunction(e)
+}
+func (v *converterExprVisitor) VisitConditional(e *hclsyntax.ConditionalExpr) (interface{}, error) {
+	val, err := e.Value(&hcl.EvalContext{
+		Variables: v.c.inputVars,
+		Functions: functions.TerraformFuncs,
+	})
+	if err != nil {
+		return v.c.wrapExpr(e)
 	}
+	return ctyjson.SimpleJSONValue{Value: val}, nil
+}
+func (v *converterExprVisitor) VisitTupleCons(e *hclsyntax.TupleConsExpr) (interface{}, error) {
+	list := make([]interface{}, 0, len(e.Exprs))
+	for _, ex := range e.Exprs {
+		elem, err := v.c.convertExpression(ex)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, elem)
+	}
+	return list, nil
+}
+func (v *converterExprVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (interface{}, error) {
+	return v.c.objectConsExpr(e)
+}
+func (v *converterExprVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
+}
+func (v *converterExprVisitor) VisitDefault(e hclsyntax.Expression) (interface{}, error) {
+	return v.c.tryEvalExpression(e)
 }
 
 func checkValue(val cty.Value) bool {
@@ -326,35 +346,54 @@ func (c *converter) convertTemplate(t *hclsyntax.TemplateExpr) (string, error) {
 }
 
 func (c *converter) convertStringPart(expr hclsyntax.Expression) (string, error) {
-	switch v := expr.(type) {
-	case *hclsyntax.LiteralValueExpr:
-		s, err := ctyconvert.Convert(v.Val, cty.String)
-		if err != nil {
-			return "", err
-		}
-		return s.AsString(), nil
-	case *hclsyntax.TemplateExpr:
-		return c.convertTemplate(v)
-	case *hclsyntax.TemplateWrapExpr:
-		return c.convertStringPart(v.Wrapped)
-	case *hclsyntax.ConditionalExpr:
-		return c.convertTemplateConditional(v)
-	case *hclsyntax.TemplateJoinExpr:
-		return c.convertTemplateFor(v.Tuple.(*hclsyntax.ForExpr))
-	case *hclsyntax.ParenthesesExpr:
-		return c.convertStringPart(v.Expression)
-	case *hclsyntax.IndexExpr, *hclsyntax.RelativeTraversalExpr, *hclsyntax.FunctionCallExpr:
-		return c.tryEvalToString(expr)
-	default:
-		// try to evaluate with variables only (no functions)
-		valueConverted, _ := expr.Value(&hcl.EvalContext{
-			Variables: c.inputVars,
-		})
-		if valueConverted.Type().FriendlyName() == ctyFriendlyNameString {
-			return valueConverted.AsString(), nil
-		}
-		return c.wrapExpr(expr)
+	return hclexpr.Dispatch(expr, &converterStringPartVisitor{c: c})
+}
+
+// converterStringPartVisitor implements hclexpr.Visitor[string] for convertStringPart.
+type converterStringPartVisitor struct {
+	c *converter
+}
+
+func (v *converterStringPartVisitor) VisitLiteralValue(e *hclsyntax.LiteralValueExpr) (string, error) {
+	s, err := ctyconvert.Convert(e.Val, cty.String)
+	if err != nil {
+		return "", err
 	}
+	return s.AsString(), nil
+}
+func (v *converterStringPartVisitor) VisitTemplateExpr(e *hclsyntax.TemplateExpr) (string, error) {
+	return v.c.convertTemplate(e)
+}
+func (v *converterStringPartVisitor) VisitScopeTraversal(e *hclsyntax.ScopeTraversalExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitIndexExpr(e *hclsyntax.IndexExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitRelativeTraversal(e *hclsyntax.RelativeTraversalExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitFunctionCall(e *hclsyntax.FunctionCallExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitConditional(e *hclsyntax.ConditionalExpr) (string, error) {
+	return v.c.convertTemplateConditional(e)
+}
+func (v *converterStringPartVisitor) VisitTupleCons(e *hclsyntax.TupleConsExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (string, error) {
+	return v.c.tryEvalToString(e)
+}
+func (v *converterStringPartVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (string, error) {
+	return v.c.convertTemplateFor(e.Tuple.(*hclsyntax.ForExpr))
+}
+func (v *converterStringPartVisitor) VisitDefault(e hclsyntax.Expression) (string, error) {
+	val, _ := e.Value(&hcl.EvalContext{Variables: v.c.inputVars})
+	if val.Type().FriendlyName() == ctyFriendlyNameString {
+		return val.AsString(), nil
+	}
+	return v.c.wrapExpr(e)
 }
 
 func (c *converter) convertTemplateConditional(expr *hclsyntax.ConditionalExpr) (string, error) {

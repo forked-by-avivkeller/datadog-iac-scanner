@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/datadog-iac-scanner/pkg/detector/terraform"
 	"github.com/DataDog/datadog-iac-scanner/pkg/engine/source"
 	"github.com/DataDog/datadog-iac-scanner/pkg/featureflags"
+	"github.com/DataDog/datadog-iac-scanner/pkg/hclexpr"
 	"github.com/DataDog/datadog-iac-scanner/pkg/logger"
 	"github.com/DataDog/datadog-iac-scanner/pkg/model"
 	tfmodules "github.com/DataDog/datadog-iac-scanner/pkg/parser/terraform/modules"
@@ -761,34 +762,44 @@ func parseJsonencodeHCL(ctx context.Context, input string) (ast.Value, error) {
 
 // expressionToAST converts HCL expression to OPA ast.Value
 func expressionToAST(expr hclsyntax.Expression) (ast.Value, error) {
-	switch e := expr.(type) {
-	case *hclsyntax.LiteralValueExpr:
-		return literalToAst(e)
-	case *hclsyntax.TemplateExpr:
-		return expressionToASTTemplateExpr(e), nil
-	case *hclsyntax.TemplateWrapExpr:
-		return expressionToAST(e.Wrapped)
-	case *hclsyntax.ParenthesesExpr:
-		return expressionToAST(e.Expression)
-	case *hclsyntax.ScopeTraversalExpr:
-		return ast.String(e.Traversal.RootName()), nil
-	case *hclsyntax.TupleConsExpr:
-		return expressionToASTTupleConsExpr(e), nil
-	case *hclsyntax.ObjectConsExpr:
-		return expressionToASTObjectConsExpr(e), nil
-	case *hclsyntax.ObjectConsKeyExpr:
-		return expressionToAST(e.UnwrapExpression())
-	case *hclsyntax.IndexExpr:
-		return expressionToASTIndexExpr(e), nil
-	case *hclsyntax.RelativeTraversalExpr:
-		return expressionToASTRelativeTraversalExpr(e), nil
-	case *hclsyntax.FunctionCallExpr:
-		return expressionToASTFunctionCallExpr(e), nil
-	case *hclsyntax.ConditionalExpr:
-		return expressionToASTConditionalExpr(e), nil
-	default:
-		return ast.String("__UNSUPPORTED_EXPR__"), nil
-	}
+	return hclexpr.Dispatch(expr, &inspectorExprVisitor{})
+}
+
+// inspectorExprVisitor implements hclexpr.Visitor[ast.Value] for expressionToAST.
+type inspectorExprVisitor struct{}
+
+func (v *inspectorExprVisitor) VisitLiteralValue(e *hclsyntax.LiteralValueExpr) (ast.Value, error) {
+	return literalToAst(e)
+}
+func (v *inspectorExprVisitor) VisitTemplateExpr(e *hclsyntax.TemplateExpr) (ast.Value, error) {
+	return expressionToASTTemplateExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitScopeTraversal(e *hclsyntax.ScopeTraversalExpr) (ast.Value, error) {
+	return ast.String(scopeTraversalPath(e.Traversal)), nil
+}
+func (v *inspectorExprVisitor) VisitIndexExpr(e *hclsyntax.IndexExpr) (ast.Value, error) {
+	return expressionToASTIndexExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitRelativeTraversal(e *hclsyntax.RelativeTraversalExpr) (ast.Value, error) {
+	return expressionToASTRelativeTraversalExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitFunctionCall(e *hclsyntax.FunctionCallExpr) (ast.Value, error) {
+	return expressionToASTFunctionCallExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitConditional(e *hclsyntax.ConditionalExpr) (ast.Value, error) {
+	return expressionToASTConditionalExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitTupleCons(e *hclsyntax.TupleConsExpr) (ast.Value, error) {
+	return expressionToASTTupleConsExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitObjectCons(e *hclsyntax.ObjectConsExpr) (ast.Value, error) {
+	return expressionToASTObjectConsExpr(e), nil
+}
+func (v *inspectorExprVisitor) VisitTemplateJoin(e *hclsyntax.TemplateJoinExpr) (ast.Value, error) {
+	return ast.String("__UNSUPPORTED_EXPR__"), nil
+}
+func (v *inspectorExprVisitor) VisitDefault(e hclsyntax.Expression) (ast.Value, error) {
+	return ast.String("__UNSUPPORTED_EXPR__"), nil
 }
 
 func expressionToASTTemplateExpr(e *hclsyntax.TemplateExpr) ast.Value {
@@ -892,6 +903,29 @@ func expressionToASTFunctionCallExpr(e *hclsyntax.FunctionCallExpr) ast.Value {
 	return ast.String(e.Name + "(" + strings.Join(args, ", ") + ")")
 }
 
+func scopeTraversalPath(t hcl.Traversal) string {
+	items := make([]string, 0, len(t))
+	for _, part := range t {
+		switch step := part.(type) {
+		case hcl.TraverseAttr:
+			items = append(items, step.Name)
+		case hcl.TraverseRoot:
+			items = append(items, step.Name)
+		case hcl.TraverseIndex:
+			if len(items) == 0 {
+				items = append(items, "")
+			}
+			switch step.Key.Type() {
+			case cty.Number:
+				items[len(items)-1] += "[" + step.Key.AsBigFloat().String() + "]"
+			case cty.String:
+				items[len(items)-1] += "[" + step.Key.AsString() + "]"
+			}
+		}
+	}
+	return strings.Join(items, ".")
+}
+
 func astValueToSimpleString(v ast.Value) string {
 	if v == nil {
 		return unresolvedPlaceholder
@@ -926,12 +960,7 @@ func literalToAst(expr *hclsyntax.LiteralValueExpr) (ast.Value, error) {
 }
 
 func normalizeKeyExpr(expr hclsyntax.Expression) hclsyntax.Expression {
-	switch e := expr.(type) {
-	case *hclsyntax.TemplateWrapExpr:
-		return normalizeKeyExpr(e.Wrapped)
-	case *hclsyntax.ParenthesesExpr:
-		return normalizeKeyExpr(e.Expression)
-	}
+	expr = hclexpr.Unwrap(expr)
 
 	v := reflect.ValueOf(expr)
 	if v.Kind() == reflect.Ptr && !v.IsNil() {
