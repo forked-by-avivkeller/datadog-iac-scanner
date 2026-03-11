@@ -86,11 +86,21 @@ func TestDispatch(t *testing.T) {
 		{"Conditional", `true ? 1 : 2`, "Conditional"},
 		{"TupleCons", `[1, 2]`, "TupleCons"},
 		{"ObjectCons", `{a = 1}`, "ObjectCons"},
+		{"TemplateJoin", ``, "TemplateJoin"}, // no parseable src; expr built in loop below
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expr := parse(t, tt.src)
+			var expr hclsyntax.Expression
+			if tt.name == "TemplateJoin" {
+				forExpr, diags := hclsyntax.ParseExpression([]byte(`[for x in var.list : x]`), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+				if diags.HasErrors() {
+					t.Fatalf("parse for-expr failed: %v", diags)
+				}
+				expr = &hclsyntax.TemplateJoinExpr{Tuple: forExpr}
+			} else {
+				expr = parse(t, tt.src)
+			}
 			v := &recordingVisitor{}
 			got, err := Dispatch[string](expr, v)
 			if err != nil {

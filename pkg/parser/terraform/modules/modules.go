@@ -64,12 +64,13 @@ func isTerraformFile(filePath string) bool {
 }
 
 const (
-	stringLocal           = "local"
-	stringUnknown         = "unknown"
-	stringPublic          = "public"
-	stringRegistry        = "registry"
-	stringPrivate         = "private"
-	unresolvedPlaceholder = "__UNRESOLVED__"
+	stringLocal                 = "local"
+	stringUnknown               = "unknown"
+	stringPublic                = "public"
+	stringRegistry              = "registry"
+	stringPrivate               = "private"
+	unresolvedPlaceholder       = "__UNRESOLVED__"
+	invalidTraversalPlaceholder = "__INVALID_TRAVERSAL__"
 )
 
 // nolint:gocyclo
@@ -323,13 +324,13 @@ func resolveExprDefault(expr hclsyntax.Expression) string {
 func resolveScopeTraversal(expr *hclsyntax.ScopeTraversalExpr, locals, vars map[string]string) string {
 	traversal := expr.Traversal
 	if len(traversal) == 0 {
-		return "__INVALID_TRAVERSAL__"
+		return invalidTraversalPlaceholder
 	}
 	if len(traversal) == 1 {
 		if root, ok := traversal[0].(hcl.TraverseRoot); ok {
 			return root.Name
 		}
-		return "__INVALID_TRAVERSAL__"
+		return invalidTraversalPlaceholder
 	}
 
 	root := traversal[0].(hcl.TraverseRoot).Name
