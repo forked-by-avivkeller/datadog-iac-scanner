@@ -18,7 +18,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.allowed.ip_protocol=%s.ports", [task.name, modules[m], allowed[k].ip_protocol]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("gcp_compute_firewall.allowed.ip_protocol=%s.ports shouldn't contain RDP port (3389) with unrestricted ingress traffic", [allowed[k].ip_protocol]),

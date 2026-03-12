@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(route53, "record", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "route53.value should be defined or not null",

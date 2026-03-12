@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cloudfront, "distribution_id", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.viewer_certificate.cloudfront_default_certificate", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "Attribute 'cloudfront_default_certificate' should be 'false' or not defined",
@@ -39,7 +39,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cloudfront, "distribution_id", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.viewer_certificate", [task.name, modules[m]]),
 		"searchValue": attr,
 		"issueType": "MissingAttribute",

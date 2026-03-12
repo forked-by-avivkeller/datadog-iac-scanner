@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(redshiftCluster, "identifier", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "redshift.encrypted should be set to true",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(redshiftCluster, "identifier", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.encrypted", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "redshift.encrypted should be set to true",

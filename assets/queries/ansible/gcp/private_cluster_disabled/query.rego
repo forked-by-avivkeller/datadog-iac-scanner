@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_container_cluster.private_cluster_config should be defined",
@@ -35,7 +35,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.private_cluster_config", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("gcp_container_cluster.private_cluster_config.%s should be defined", [fields[f]]),
@@ -54,7 +54,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.private_cluster_config.%s", [task.name, modules[m], fields[f]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("gcp_container_cluster.private_cluster_config.%s should be true", [fields[f]]),

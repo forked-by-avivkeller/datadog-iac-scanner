@@ -34,7 +34,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": rds[r],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "db_instance_identifier", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.%s", [task.name, rds[r], options[o]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "RDS should not be running in a public subnet",

@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(keyvault, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.enable_soft_delete", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_keyvault.enable_soft_delete should be true",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(keyvault, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "azure_rm_keyvault.enable_soft_delete should be defined",

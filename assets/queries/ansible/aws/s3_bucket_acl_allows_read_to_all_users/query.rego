@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(s3, "bucket", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.permission", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "aws_s3 should not have read access for all user groups",

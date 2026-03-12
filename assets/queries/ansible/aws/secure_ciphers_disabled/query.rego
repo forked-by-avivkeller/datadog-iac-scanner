@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cloudfront_distribution, "distribution_id", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.viewer_certificate.minimum_protocol_version", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "cloudfront_distribution.viewer_certificate.minimum_protocol_version should be TLSv1.1 or TLSv1.2",

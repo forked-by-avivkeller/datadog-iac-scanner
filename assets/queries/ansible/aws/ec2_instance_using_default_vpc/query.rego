@@ -26,7 +26,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ec2, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.vpc_subnet_id", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'vpc_subnet_id' should not be associated with a default VPC",

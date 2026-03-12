@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.settings.database_flags", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "cloud_gcp_sql_instance.settings.database_flags should be correct",

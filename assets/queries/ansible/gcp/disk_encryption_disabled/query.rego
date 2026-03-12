@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(disk, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_compute_disk.disk_encryption_key should be defined and not null",
@@ -34,7 +34,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(disk, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.disk_encryption_key", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_compute_disk.disk_encryption_key.raw_key or gcp_compute_disk.disk_encryption_key.kms_key_name should be defined and not null",
@@ -52,7 +52,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(disk, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.disk_encryption_key.%s", [task.name, modules[m], key]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("gcp_compute_disk.disk_encryption_key.%s should not be empty", [key]),

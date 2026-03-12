@@ -17,7 +17,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.metadata.enable-oslogin", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_compute_instance.metadata.enable-oslogin should be true",

@@ -6,10 +6,10 @@ import data.generic.common as common_lib
 CxPolicy[result] {
 	task := ans_lib.tasks[id][t]
 	modules := {"community.aws.iam_managed_policy", "iam_managed_policy"}
-	awsApiGateway := task[modules[m]]
-	ans_lib.checkState(awsApiGateway)
+	iamPolicy := task[modules[m]]
+	ans_lib.checkState(iamPolicy)
 
-	st := common_lib.get_statement(common_lib.get_policy(awsApiGateway.policy))
+	st := common_lib.get_statement(common_lib.get_policy(iamPolicy.policy))
 	statement := st[_]
 
 	common_lib.is_allow_effect(statement)
@@ -19,7 +19,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(iamPolicy, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.policy", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "iam_managed_policy.policy.Statement.Action should not contain '*'",

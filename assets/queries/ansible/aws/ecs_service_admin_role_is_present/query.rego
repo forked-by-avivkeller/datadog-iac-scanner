@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ecs, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.role", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "ecs_service.role should not be an admin role",

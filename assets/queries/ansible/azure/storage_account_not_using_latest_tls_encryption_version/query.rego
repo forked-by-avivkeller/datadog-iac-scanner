@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(storage, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "azure_rm_storageaccount.minimum_tls_version should be defined",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(storage, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.minimum_tls_version", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_storageaccount should be using the latest version of TLS encryption",

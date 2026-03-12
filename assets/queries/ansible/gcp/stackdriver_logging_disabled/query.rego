@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_container_cluster.logging_service should be defined",
@@ -34,7 +34,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.logging_service", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_container_cluster.logging_service should not be 'none'",

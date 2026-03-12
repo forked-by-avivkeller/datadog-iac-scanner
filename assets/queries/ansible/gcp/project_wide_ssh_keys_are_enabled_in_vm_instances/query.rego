@@ -17,7 +17,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.metadata.block-project-ssh-keys", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_compute_instance.metadata.block-project-ssh-keys should be true",
@@ -35,7 +35,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.metadata", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_compute_instance.metadata.block-project-ssh-keys should be set to true",
@@ -53,7 +53,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_compute_instance.metadata should be set",

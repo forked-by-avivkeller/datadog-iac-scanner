@@ -7,15 +7,15 @@ modules := {"google.cloud.gcp_kms_crypto_key", "gcp_kms_crypto_key"}
 
 CxPolicy[result] {
 	task := ansLib.tasks[id][t]
-	gcpTopic := task[modules[m]]
-	ansLib.checkState(gcpTopic)
+	cryptoKey := task[modules[m]]
+	ansLib.checkState(cryptoKey)
 
-	not common_lib.valid_key(gcpTopic, "rotation_period")
+	not common_lib.valid_key(cryptoKey, "rotation_period")
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cryptoKey, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_kms_crypto_key.rotation_period should be defined with a value less or equal to 7776000",
@@ -25,16 +25,16 @@ CxPolicy[result] {
 
 CxPolicy[result] {
 	task := ansLib.tasks[id][t]
-	gcpTopic := task[modules[m]]
-	ansLib.checkState(gcpTopic)
+	cryptoKey := task[modules[m]]
+	ansLib.checkState(cryptoKey)
 
-	rotationPeriod := substring(gcpTopic.rotation_period, 0, count(gcpTopic.rotation_period) - 1)
+	rotationPeriod := substring(cryptoKey.rotation_period, 0, count(cryptoKey.rotation_period) - 1)
 	to_number(rotationPeriod) > 7776000
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cryptoKey, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.rotation_period", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_kms_crypto_key.rotation_period should be less or equal to 7776000",

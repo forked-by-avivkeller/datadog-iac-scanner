@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(policy, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_compute_ssl_policy has min_tls_version should be set to 'TLS_1_2'",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(policy, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.min_tls_version", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_compute_ssl_policy.min_tls_version has min_tls_version should be set to 'TLS_1_2'",

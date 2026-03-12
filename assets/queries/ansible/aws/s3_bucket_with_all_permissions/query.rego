@@ -21,7 +21,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(s3_bucket, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.policy", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'policy.Statement' should not allow all actions to all principal",

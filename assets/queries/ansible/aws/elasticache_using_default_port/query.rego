@@ -18,7 +18,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(elasticache, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.cache_port", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("'cache_port' should not be set to %d", [enginePort]),

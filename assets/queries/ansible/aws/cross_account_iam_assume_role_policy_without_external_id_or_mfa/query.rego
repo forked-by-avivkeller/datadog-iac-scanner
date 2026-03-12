@@ -25,7 +25,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(iamRole, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.assume_role_policy_document", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "assume_role_policy_document should not contain ':root",

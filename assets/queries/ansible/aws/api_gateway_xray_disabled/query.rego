@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(tracing, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "aws_api_gateway.tracing_enabled should be defined",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(tracing, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.tracing_enabled", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "aws_api_gateway.tracing_enabled should be true",

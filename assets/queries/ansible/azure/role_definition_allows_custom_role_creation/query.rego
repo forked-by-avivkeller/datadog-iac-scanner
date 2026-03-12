@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(roleDefinition, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.permissions.actions", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("%s.permissions[%d].actions should not allow custom role creation", [modules[m], p]),

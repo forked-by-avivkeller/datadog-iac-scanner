@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(gcp_container, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.config.image_type", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_container_node_pool.config.image_type should start with 'COS'",

@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(azureMonitor, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.retention_policy.enabled", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_monitorlogprofile.retention_policy.enabled should be true or yes",
@@ -35,7 +35,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(azureMonitor, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.retention_policy.days", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_monitorlogprofile.retention_policy.days should be greater than or equal to 365 days or 0 (indefinitely)",
@@ -53,7 +53,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(azureMonitor, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "azure_rm_monitorlogprofile.retention_policy should be defined",

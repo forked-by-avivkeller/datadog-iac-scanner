@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(aks, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "azure_rm_aks.enable_rbac should be defined",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(aks, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.enable_rbac", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_aks.enable_rbac should be set to 'yes' or 'true'",

@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(sqsQueue, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.kms_master_key_id", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "'kms_master_key_id' should be set",

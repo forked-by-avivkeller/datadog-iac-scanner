@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cloudtrail, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "cloudtrail.enable_log_file_validation or cloudtrail.log_file_validation_enabled should be defined",
@@ -37,7 +37,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cloudtrail, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.%s", [task.name, modules[m], attr]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("cloudtrail.%s should be set to true or yes", [attr]),

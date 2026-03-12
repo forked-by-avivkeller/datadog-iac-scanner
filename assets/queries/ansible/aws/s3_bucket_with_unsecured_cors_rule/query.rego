@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cors, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.rules", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("%s[%d] should not allow all methods, all headers or several origins", [modules[m], c]),

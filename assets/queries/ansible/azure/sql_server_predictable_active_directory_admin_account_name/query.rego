@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ad, "app_id", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.ad_user", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_ad_serviceprincipal.ad_user should be neither empty nor null",
@@ -34,7 +34,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ad, "app_id", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.ad_user", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_ad_serviceprincipal.ad_user should not be predictable",

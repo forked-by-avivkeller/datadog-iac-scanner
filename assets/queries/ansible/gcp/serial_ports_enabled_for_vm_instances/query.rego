@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.metadata.serial-port-enable", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_compute_instance.metadata.serial-port-enable should be undefined or set to false",

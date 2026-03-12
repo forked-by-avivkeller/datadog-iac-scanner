@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(virtualmachine, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.azure_rm_virtualmachine", [task.name]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "azure_rm_virtualmachine.network_interface_names should be defined",

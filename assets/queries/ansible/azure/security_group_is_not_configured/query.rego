@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(subnet, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "azure_rm_subnet.security_group should be defined and not null",
@@ -36,7 +36,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(subnet, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.%s", [task.name, modules[m], fields[f]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("azure_rm_subnet.%s should not be empty", [fields[f]]),

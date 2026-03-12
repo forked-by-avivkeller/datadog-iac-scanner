@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(bigquery_dataset, "name", object.get(object.get(bigquery_dataset, "dataset_reference", {}), "dataset_id", task.name)),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.access", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_bigquery_dataset.access.special_group should not equal to 'allAuthenticatedUsers'",

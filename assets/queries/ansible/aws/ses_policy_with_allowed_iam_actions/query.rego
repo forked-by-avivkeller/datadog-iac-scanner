@@ -20,7 +20,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(sesPolicy, "identity", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.policy", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'policy' should not allow IAM actions to all principals",

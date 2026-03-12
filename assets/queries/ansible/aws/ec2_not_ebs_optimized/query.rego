@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ec2, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "ec2 to have ebs_optimized set to true.",
@@ -37,7 +37,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ec2, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.ebs_optimized", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "ec2 to have ebs_optimized set to true.",

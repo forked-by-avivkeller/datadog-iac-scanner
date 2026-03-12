@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ecs_service, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.network_configuration.assign_public_ip", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("'%s.network_configuration.assign_public_ip' should be set to false (default value is false)", [modules[m]]),

@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cloudfront, "distribution_id", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "cloudfront_distribution.logging should be defined",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cloudfront, "distribution_id", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.logging.enabled", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "cloudfront_distribution.logging.enabled should be true",

@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(dns, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.dnssec_config.defaultKeySpecs.algorithm", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_dns_managed_zone.dnssec_config.defaultKeySpecs.algorithm should not equal to 'rsasha1'",

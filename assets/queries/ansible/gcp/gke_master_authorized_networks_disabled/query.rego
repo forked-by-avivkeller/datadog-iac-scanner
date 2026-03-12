@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(container_cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_container_cluster.master_authorized_networks_config should be defined",
@@ -33,7 +33,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(container_cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.master_authorized_networks_config", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_container_cluster.master_authorized_networks_config.enabled should be defined",
@@ -51,7 +51,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(container_cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.master_authorized_networks_config.enabled", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_container_cluster.master_authorized_networks_config.enabled should be true",

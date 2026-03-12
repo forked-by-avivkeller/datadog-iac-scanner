@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ec2_instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.user_data", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'ec2_instance.user_data' shouldn't contain access key",
@@ -32,7 +32,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ec2_instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.user_data", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'ec2_instance.user_data' shouldn't contain access key",

@@ -15,7 +15,7 @@ CxPolicy[result] {
     result := {
         "documentId": id,
         "resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(iam_group, "name", task.name),
         "searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
         "issueType": "MissingAttribute",
         "keyExpectedValue": sprintf("%s.users should be defined and not null", [modules[m]]),

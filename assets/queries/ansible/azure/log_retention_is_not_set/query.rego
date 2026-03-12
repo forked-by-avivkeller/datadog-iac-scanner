@@ -17,7 +17,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(postgresql_configuration, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.value", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_postgresqlconfiguration.value should equal to 'on'",

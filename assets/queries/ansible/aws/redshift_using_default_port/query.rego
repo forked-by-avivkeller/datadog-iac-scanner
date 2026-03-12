@@ -7,12 +7,13 @@ CxPolicy[result] {
 	task := ans_lib.tasks[id][t]
 	modules := {"redshift", "community.aws.redshift"}
 
-	task[modules[m]].port == 5439
+	redshift := task[modules[m]]
+	redshift.port == 5439
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(redshift, "identifier", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.port", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "redshift.port should not be set to 5439",

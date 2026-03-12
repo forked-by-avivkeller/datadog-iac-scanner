@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(gcp_task, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_sql_instance.settings.databaseFlags should be defined",
@@ -35,7 +35,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(gcp_task, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.settings.databaseFlags", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_sql_instance.settings.databaseFlags should have 'log_checkpoints' flag set to 'on'",
