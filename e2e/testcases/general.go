@@ -20,8 +20,9 @@ type ResultsValidation struct {
 }
 
 type args struct {
-	Args                    []cmdArgs // args to pass to the scanner binary
-	ExpectedOut             []string  // path to file with expected output
+	Args                    []cmdArgs    // args to pass to the scanner binary
+	ExpectedOut             []string     // path to file with expected output
+	ExpectedOutputFunc      []Validation // function to verify the output
 	ExpectedPayload         []string
 	ExpectedResult          []ResultsValidation
 	ExpectedAnalyzerResults *ResultsValidation

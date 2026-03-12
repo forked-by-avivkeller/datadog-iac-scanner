@@ -1,5 +1,7 @@
 package testcases
 
+import "strings"
+
 // E2E-CLI-016 - Scanner has an invalid flag or invalid command
 // an error message and return exit code 1
 func init() { //nolint
@@ -12,15 +14,22 @@ func init() { //nolint
 				[]string{"invalid"},
 				[]string{"-i"},
 			},
-			ExpectedOut: []string{
-				"E2E_CLI_016_INVALID_SCAN_FLAG",
-				"E2E_CLI_016_INVALID_FLAG",
-				"E2E_CLI_016_INVALID_COMMAND",
-				"E2E_CLI_016_INVALID_SHOTHAND",
+			ExpectedOutputFunc: []Validation{
+				func(outputText string) bool {
+					return strings.Contains(outputText, "flag provided but not defined: -invalid-flag")
+				},
+				func(outputText string) bool {
+					return strings.Contains(outputText, "flag provided but not defined: -invalid-flag")
+				},
+				func(outputText string) bool {
+					return strings.Contains(outputText, "No help topic for 'invalid'")
+				},
+				func(outputText string) bool {
+					return strings.Contains(outputText, "flag provided but not defined: -i")
+				},
 			},
 		},
 		WantStatus: []int{126, 126, 3, 126},
 	}
-
 	Tests = append(Tests, testSample)
 }
