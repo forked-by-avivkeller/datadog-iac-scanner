@@ -38,12 +38,12 @@ CxPolicy[result] {
 	not common_lib.valid_key(action, "recurse")
     not file_module(action, modules[m])
     
-    not common_lib.valid_key(action, "mode")
+	not common_lib.valid_key(action, "mode")
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": object.get(action, "dest", task.name),
+		"resourceName": object.get(action, "dest", object.get(action, "path", task.name)),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("All the permissions set in %s about creating files/directories", [modules[m]]),
