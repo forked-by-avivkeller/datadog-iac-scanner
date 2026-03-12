@@ -4,10 +4,9 @@ import data.generic.common as common_lib
 import data.generic.terraform as tf_lib
 
 CxPolicy[result] {
-	some i
 	resource := input.document[i].resource.alicloud_db_instance[name].parameters
-    resource[parameter].name == "log_duration"
-    resource[parameter].value == "OFF"
+	resource[parameter].name == "log_duration"
+	resource[parameter].value == "OFF"
 
 	result := {
 		"documentId": input.document[i].id,
@@ -27,7 +26,6 @@ CxPolicy[result] {
 }
 
 CxPolicy[result] {
-	some i
 	resource := input.document[i].resource.alicloud_db_instance[name]
 	common_lib.valid_key(resource, "parameters")
 	not has_log_duration(resource)
@@ -50,7 +48,6 @@ has_log_duration(resource){
 }
 
 CxPolicy[result] {
-	some i
 	resource := input.document[i].resource.alicloud_db_instance[name]
 	not common_lib.valid_key(resource, "parameters")
 
@@ -58,7 +55,7 @@ CxPolicy[result] {
 		"documentId": input.document[i].id,
 		"resourceType": "alicloud_db_instance",
 		"resourceName": tf_lib.get_resource_name(resource, name),
-		"searchKey": sprintf("alicloud_db_instance[%s]]", [name]),
+		"searchKey": sprintf("alicloud_db_instance[%s]", [name]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "'log_duration' parameter should be defined and value should be 'ON' in parameters array",
 		"keyActualValue": "'log_duration' parameter is not defined in parameters array",
