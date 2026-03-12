@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(compute_instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.network_interfaces.access_configs", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_compute_instance.network_interfaces.access_configs should not be defined",

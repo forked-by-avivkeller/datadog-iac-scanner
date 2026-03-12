@@ -21,7 +21,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ec2_instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.rules.%s", [task.name, modules[m], cidr]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("'ec2_group.rules.%s' should not be %s", [cidr, cidrValue]),

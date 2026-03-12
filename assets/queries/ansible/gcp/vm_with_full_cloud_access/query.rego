@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(taskComputeInstance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.service_accounts", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_compute_instance.service_accounts.scopes should not contain 'cloud-platform'",

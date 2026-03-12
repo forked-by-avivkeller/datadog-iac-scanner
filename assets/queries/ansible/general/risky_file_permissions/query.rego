@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": m,
-		"resourceName": task.name,
+		"resourceName": object.get(action, "dest", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, m]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("%s does not allow setting 'preserve' value for 'mode' key", [m]),
@@ -38,12 +38,12 @@ CxPolicy[result] {
 	not common_lib.valid_key(action, "recurse")
     not file_module(action, modules[m])
     
-    not common_lib.valid_key(action, "mode")
+	not common_lib.valid_key(action, "mode")
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(action, "dest", object.get(action, "path", task.name)),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("All the permissions set in %s about creating files/directories", [modules[m]]),
@@ -74,7 +74,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": m,
-		"resourceName": task.name,
+		"resourceName": object.get(action, "path", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, m]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("%s 'create' key should set to 'false' or 'mode' key should be defined", [m]),

@@ -17,7 +17,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(resource, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m]], []),
 		"issueType": "MissingAttribute",
@@ -40,7 +40,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(resource, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.metadata_options.http_tokens", [task.name, modules[m]]),
 		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m], "metadata_options", "http_tokens"], []),
 		"issueType": "IncorrectValue",
@@ -62,7 +62,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(resource, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.metadata_options", [task.name, modules[m]]),
 		"searchLine": common_lib.build_search_line(["playbooks", t, modules[m], "metadata_options"], []),
 		"issueType": "MissingAttribute",

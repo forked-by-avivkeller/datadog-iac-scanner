@@ -13,7 +13,7 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": id,
-		"resourceName": task.name,
+		"resourceName": object.get(action, "name", task.name),
 		"resourceType": "ansible.builtin.user",
 		"searchKey": sprintf("name={{%s}}", [task.name]),
 		"issueType": "MissingAttribute",
@@ -32,7 +32,7 @@ CxPolicy[result] {
 
 	result := {
 		"documentId": id,
-		"resourceName": task.name,
+		"resourceName": object.get(action, "name", task.name),
 		"resourceType": "ansible.builtin.user",
 		"searchKey": sprintf("name={{%s}}.no_log", [task.name]),
 		"issueType": "IncorrectValue",

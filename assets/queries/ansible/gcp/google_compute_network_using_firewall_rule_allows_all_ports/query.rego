@@ -22,7 +22,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modulesCompute[m],
-		"resourceName": tk.name,
+		"resourceName": object.get(computeNetwork, "name", tk.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [tk.name, modulesCompute[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("'%s' should not be using a firewall rule that allows access to all ports", [modulesCompute[m]]),

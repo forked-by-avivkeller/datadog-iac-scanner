@@ -16,7 +16,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(builtin_uri, "url", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.url", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "ansible.builtin.uri.url should be accessed via the HTTPS protocol",

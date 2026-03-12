@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": "community.aws.aws_kms",
-		"resourceName": task.name,
+		"resourceName": object.get(kms, "alias", task.name),
 		"searchKey": sprintf("name={{%s}}.{{community.aws.aws_kms}}", [task.name]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "community.aws.aws_kms.enable_key_rotation should be set",
@@ -35,7 +35,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": "community.aws.aws_kms",
-		"resourceName": task.name,
+		"resourceName": object.get(kms, "alias", task.name),
 		"searchKey": sprintf("name={{%s}}.{{community.aws.aws_kms}}.enable_key_rotation", [task.name]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "community.aws.aws_kms.enable_key_rotation should be set to true",

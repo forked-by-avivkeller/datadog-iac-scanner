@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(storageaccount, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.network_acls.default_action", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_storageaccount.network_acls.default_action should not be set",
@@ -37,7 +37,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(storageaccount, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.network_acls.ip_rules", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_storageaccount.network_acls.default_action should be set to 'Deny' and azure_rm_storageaccount.network_acls.ip_rules should not contain value '0.0.0.0/0' ",

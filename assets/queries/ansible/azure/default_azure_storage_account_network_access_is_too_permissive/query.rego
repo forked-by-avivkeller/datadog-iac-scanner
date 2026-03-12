@@ -17,7 +17,7 @@ CxPolicy[result] {
     result := {
 		"documentId": id,
 		"resourceType": modules[index],
-		"resourceName": task.name,
+		"resourceName": object.get(storageAccount, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[index]]),
 		"issueType": issue.issueType,
 		"keyExpectedValue": issue.kev,

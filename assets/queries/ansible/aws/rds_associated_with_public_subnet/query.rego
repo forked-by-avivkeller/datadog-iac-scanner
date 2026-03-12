@@ -13,11 +13,11 @@ options := {"db_subnet_group_name", "subnet_group"}
 
 CxPolicy[result] {
 	task := ans_lib.tasks[id][t]
-	instance := task[rds[r]]
-	ans_lib.checkState(instance)
+	rds_instance := task[rds[r]]
+	ans_lib.checkState(rds_instance)
 
 	# get subnet group name
-	subnetGroupName := instance[options[o]]
+	subnetGroupName := rds_instance[options[o]]
 
 	# get subnet group
 	tk := ans_lib.tasks[_][_]
@@ -34,7 +34,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": rds[r],
-		"resourceName": task.name,
+		"resourceName": object.get(rds_instance, "db_instance_identifier", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.%s", [task.name, rds[r], options[o]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "RDS should not be running in a public subnet",

@@ -18,7 +18,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "db_instance_identifier", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.port", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("'port' should not be set to %d", [enginePort]),

@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": "community.aws.aws_acm",
-		"resourceName": task.name,
+		"resourceName": object.get(acm, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.community.aws.aws_acm.certificate", [task.name]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'community.aws.aws_acm.certificate' should not have expired",

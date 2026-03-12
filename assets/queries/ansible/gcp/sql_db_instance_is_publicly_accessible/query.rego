@@ -19,7 +19,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.settings.ip_configuration.authorized_networks.name={{%s}}.value", [task.name, modules[m], network]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("gcp_sql_instance.settings.ip_configuration.authorized_networks.name={{%s}}.value address should be trusted", [network]),
@@ -39,7 +39,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.settings.ip_configuration.ipv4_enabled", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_sql_instance.settings.ip_configuration.ipv4_enabled should be disabled when there are no authorized networks",
@@ -57,7 +57,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.settings", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "gcp_sql_instance.settings.ip_configuration should be defined and allow only trusted networks",

@@ -23,7 +23,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": m,
-		"resourceName": task.name,
+		"resourceName": object.get(copyOrTemplate, "dest", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.src", [task.name, m]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("%s.src should not be a relative path", [m]),

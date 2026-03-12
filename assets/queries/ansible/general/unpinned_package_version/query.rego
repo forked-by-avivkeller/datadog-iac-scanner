@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": ansLib.installer_modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(package_installer, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.state", [task.name, ansLib.installer_modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "State's task when installing a package should not be defined as 'latest' or should have set 'update_only' to 'true'",
@@ -35,7 +35,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": ansLib.installer_modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(package_installer, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.state", [task.name, ansLib.installer_modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "State's task when installing a package should not be defined as 'latest' or should have set 'update_only' to 'true'",

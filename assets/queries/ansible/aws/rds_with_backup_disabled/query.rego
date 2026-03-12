@@ -15,7 +15,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(instance, "db_instance_identifier", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.backup_retention_period", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "rds_instance should have the property 'backup_retention_period' greater than 0",

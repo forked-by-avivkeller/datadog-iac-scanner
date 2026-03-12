@@ -6,16 +6,16 @@ modules := {"community.aws.aws_config_aggregator", "aws_config_aggregator"}
 
 CxPolicy[result] {
 	task := ansLib.tasks[id][t]
-	cloudwatchlogs := task[modules[m]]
-	ansLib.checkState(cloudwatchlogs)
+	configAggregator := task[modules[m]]
+	ansLib.checkState(configAggregator)
 	fields := ["account_sources", "organization_source"]
 
-	not ansLib.isAnsibleTrue(cloudwatchlogs[fields[f]].all_aws_regions)
+	not ansLib.isAnsibleTrue(configAggregator[fields[f]].all_aws_regions)
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(configAggregator, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.%s.all_aws_regions", [task.name, modules[m], fields[f]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("'aws_config_aggregator.%s' should have all_aws_regions set to true", [fields[f]]),

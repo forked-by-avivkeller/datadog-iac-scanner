@@ -7,15 +7,15 @@ modules := {"azure.azcollection.azure_rm_mysqlserver", "azure_rm_mysqlserver"}
 
 CxPolicy[result] {
 	task := ansLib.tasks[id][t]
-	storageAccount := task[modules[m]]
-	ansLib.checkState(storageAccount)
+	mysqlServer := task[modules[m]]
+	ansLib.checkState(mysqlServer)
 
-	not common_lib.valid_key(storageAccount, "enforce_ssl")
+	not common_lib.valid_key(mysqlServer, "enforce_ssl")
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(mysqlServer, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": "azure_rm_mysqlserver should have enforce_ssl set to true",
@@ -25,15 +25,15 @@ CxPolicy[result] {
 
 CxPolicy[result] {
 	task := ansLib.tasks[id][t]
-	storageAccount := task[modules[m]]
-	ansLib.checkState(storageAccount)
+	mysqlServer := task[modules[m]]
+	ansLib.checkState(mysqlServer)
 
-	not ansLib.isAnsibleTrue(storageAccount.enforce_ssl)
+	not ansLib.isAnsibleTrue(mysqlServer.enforce_ssl)
 
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(mysqlServer, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.enforce_ssl", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_mysqlserver should have enforce_ssl set to true",

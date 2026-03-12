@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(ecs_taskdefinition, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.network_mode", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "'ecs_taskdefinition.network_mode' should be set to 'awsvpc'",

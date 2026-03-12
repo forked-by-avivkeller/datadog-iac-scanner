@@ -12,7 +12,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": "community.aws.aws_kms",
-		"resourceName": task.name,
+		"resourceName": object.get(kms, "alias", task.name),
 		"searchKey": sprintf("name={{%s}}.{{community.aws.aws_kms}}.enabled", [task.name]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "community.aws.aws_kms.enabled should be set to true",
@@ -30,7 +30,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": "community.aws.aws_kms",
-		"resourceName": task.name,
+		"resourceName": object.get(kms, "alias", task.name),
 		"searchKey": sprintf("name={{%s}}.{{community.aws.aws_kms}}.pending_window", [task.name]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "community.aws.aws_kms.pending_window should be undefined",

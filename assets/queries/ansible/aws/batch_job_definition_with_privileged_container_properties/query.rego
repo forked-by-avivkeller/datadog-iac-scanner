@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(batch_job_definition, "job_definition_name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.privileged", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("name={{%s}}.{{%s}}.privileged should be set to 'false' or not set", [task.name, modules[m]]),

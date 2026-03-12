@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(elasticsearch, "domain_name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.domain_endpoint_options.enforce_https", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": sprintf("name={{%s}}.{{%s}}.domain_endpoint_options.enforce_https should be set to 'true'", [task.name, modules[m]]),
@@ -34,7 +34,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(elasticsearch, "domain_name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.domain_endpoint_options", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("name={{%s}}.{{%s}}.domain_endpoint_options.enforce_https should be defined and set to 'true'", [task.name, modules[m]]),
@@ -54,7 +54,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(elasticsearch, "domain_name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}", [task.name, modules[m]]),
 		"issueType": "MissingAttribute",
 		"keyExpectedValue": sprintf("name={{%s}}.{{%s}}.domain_endpoint_options.enforce_https should be defined and set to 'true'", [task.name, modules[m]]),

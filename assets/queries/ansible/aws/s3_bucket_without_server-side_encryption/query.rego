@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(s3_bucket, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.encryption", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "s3_bucket.encryption should not be 'none'",

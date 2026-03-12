@@ -14,7 +14,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(fwRule, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.end_ip_address", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "azure_rm_sqlfirewallrule should allow all IPs",

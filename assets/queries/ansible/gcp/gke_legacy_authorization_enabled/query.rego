@@ -13,7 +13,7 @@ CxPolicy[result] {
 	result := {
 		"documentId": id,
 		"resourceType": modules[m],
-		"resourceName": task.name,
+		"resourceName": object.get(cluster, "name", task.name),
 		"searchKey": sprintf("name={{%s}}.{{%s}}.legacy_abac.enabled", [task.name, modules[m]]),
 		"issueType": "IncorrectValue",
 		"keyExpectedValue": "gcp_container_cluster.legacy_abac.enabled should be set to false",
