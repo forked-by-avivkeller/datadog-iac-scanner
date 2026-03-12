@@ -477,7 +477,13 @@ func (sr *sarifReport) BuildSarifIssue(ctx context.Context, issue *model.QueryRe
 			resourceLocation := vulnerability.ResourceLocation
 
 			if resourceLocation.Start.Line < 1 || resourceLocation.End.Line < 1 {
-				contextLogger.Warn().Msgf("Invalid resource location for file %s", issue.Files[idx].FileName)
+				contextLogger.Error().
+					Str("file", vulnerability.FileName).
+					Str("query_name", issue.QueryName).
+					Str("resource_type", resourceType).
+					Str("resource_name", resourceName).
+					Str("platform", issue.Platform).
+					Msg("Invalid resource location for file")
 				continue
 			}
 
