@@ -300,3 +300,4 @@ github.com/kr/pretty: Copyright 2012 Keith Rarick
 github.com/kr/text: Copyright 2012 Keith Rarick
 github.com/anchore/go-struct-converter: "" # At date, this repository have no copyright
 github.com/santhosh-tekuri/jsonschema/*: Copyright Santhosh Tekuri
+github.com/DataDog/jsonapi: Copyright 2022-Present Datadog, Inc
