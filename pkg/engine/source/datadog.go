@@ -1,0 +1,403 @@
+package source
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"slices"
+	"strings"
+
+	"github.com/DataDog/datadog-iac-scanner/pkg/model"
+	"github.com/DataDog/jsonapi"
+)
+
+// NewDatadogSource creates a DatadogSource with the given options.
+func NewDatadogSource(options ...DatadogSourceOption) (QueriesSource, error) {
+	out := &DatadogSource{
+		httpClient:           http.DefaultClient,
+		wantedPlatforms:      []string{""},
+		wantedCloudProviders: []string{""},
+	}
+	for _, option := range options {
+		option(out)
+	}
+	if out.hostname == "" {
+		WithSiteFromEnv()(out)
+	}
+	if out.apiKey == "" {
+		WithApiKeyFromEnv()(out)
+	}
+	if out.appKey == "" {
+		WithAppKeyFromEnv()(out)
+	}
+	if out.librarySource == nil {
+		librarySource := NewFilesystemSource(
+			context.Background(),
+			[]string{""},
+			out.wantedPlatforms,
+			out.wantedCloudProviders,
+			"./assets/libraries",
+			true,
+		)
+		WithLibrarySource(librarySource)(out)
+	}
+	return out, nil
+}
+
+// WithWantedPlatforms specifies a list of platforms to read queries for.
+// If unspecified, all platforms will be read.
+func WithWantedPlatforms(platforms []string) DatadogSourceOption {
+	return func(ds *DatadogSource) {
+		ds.wantedPlatforms = slices.Clone(platforms)
+	}
+}
+
+// WithWantedCloudProviders specifies a list of providers to read queries for.
+// If unspecified, all providers will be read.
+func WithWantedCloudProviders(providers []string) DatadogSourceOption {
+	return func(ds *DatadogSource) {
+		ds.wantedCloudProviders = slices.Clone(providers)
+	}
+}
+
+// WithLibrarySource lets you specify the QueriesSource instance that library data will be read from.
+// If unspecified, a FilesystemSource with equivalent options will be used.
+func WithLibrarySource(source QueriesSource) DatadogSourceOption {
+	return func(ds *DatadogSource) {
+		ds.librarySource = source
+	}
+}
+
+// WithSite lets you specify a Datadog site to use.
+// If unspecified, the Datadog site will be fetched from the environment using WithSiteFromEnv.
+func WithSite(site string) DatadogSourceOption {
+	return withHostname("api." + site)
+}
+
+// WithSiteFromEnv uses the Datadog site specified in the DD_SITE or DATADOG_SITE environment variable.
+// If neither variable exists, "datadoghq.com" will be used.
+func WithSiteFromEnv() DatadogSourceOption {
+	site := getDdEnvvar("SITE")
+	if site == "" {
+		site = "datadoghq.com"
+	}
+	return WithSite(site)
+}
+
+// WithApiKey lets you specify a Datadog API key.
+// If unspecified, the API key will be fetched from the environment using WithApiKeyFromEnv.
+func WithApiKey(apiKey string) DatadogSourceOption {
+	return func(ds *DatadogSource) {
+		ds.apiKey = apiKey
+	}
+}
+
+// WithAppKey lets you specify a Datadog application key.
+// If unspecified, the application key will be fetched from the environment using WithAppKeyFromEnv.
+func WithAppKey(appKey string) DatadogSourceOption {
+	return func(ds *DatadogSource) {
+		ds.appKey = appKey
+	}
+}
+
+// WithApiKeyFromEnv uses the API key specified in the DD_API_KEY or DATADOG_API_KEY environment variable.
+// If neither variable exists, an empty API key will be used.
+func WithApiKeyFromEnv() DatadogSourceOption {
+	return WithApiKey(getDdEnvvar("API_KEY"))
+}
+
+// WithAppKeyFromEnv uses the application key specified in the DD_APP_KEY or DATADOG_APP_KEY environment variable.
+// If neither variable exists, an empty application key will be used.
+func WithAppKeyFromEnv() DatadogSourceOption {
+	return WithAppKey(getDdEnvvar("APP_KEY"))
+}
+
+// WithHttpClient lets you specify an http.Client instance to use.
+// If unspecified, the [http.DefaultClient] will be used.
+func WithHttpClient(client *http.Client) DatadogSourceOption {
+	return func(ds *DatadogSource) {
+		ds.httpClient = client
+	}
+}
+
+// withHostname lets you specify the hostname to use for Datadog API requests.
+// Used in the implementation and unit tests.
+func withHostname(hostname string) DatadogSourceOption {
+	return func(ds *DatadogSource) {
+		ds.hostname = hostname
+	}
+}
+
+type DatadogSourceOption func(source *DatadogSource)
+
+// DatadogSource is a QueriesSource that reads queries from the Datadog API.
+// Libraries are fetched via another QueriesSource.
+type DatadogSource struct {
+	hostname             string
+	apiKey               string
+	appKey               string
+	httpClient           *http.Client
+	librarySource        QueriesSource
+	wantedPlatforms      []string
+	wantedCloudProviders []string
+}
+
+func (s *DatadogSource) GetQueries(ctx context.Context, querySelection *QueryInspectorParameters) ([]model.QueryMetadata, error) {
+	defaultRuleset, err := s.getDefaultRuleset(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving rules from Datadog: %w", err)
+	}
+	return s.filterRules(defaultRuleset, querySelection)
+}
+
+func (s *DatadogSource) GetQueryLibrary(ctx context.Context, platform string) (RegoLibraries, error) {
+	return s.librarySource.GetQueryLibrary(ctx, platform)
+}
+
+// getDefaultRuleset returns the content of the default ruleset.
+func (s *DatadogSource) getDefaultRuleset(ctx context.Context) (*Ruleset, error) {
+	path := "rulesets/default-ruleset?include_tests=false&include_testing_rules=true"
+	response, err := s.sendRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("the Datadog API returned status %d", response.StatusCode)
+	}
+
+	var ruleset *Ruleset
+	bytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	if err = jsonapi.Unmarshal(bytes, &ruleset); err != nil {
+		return nil, err
+	}
+
+	return ruleset, nil
+}
+
+// filterRules selects the rules from the given ruleset according to the selection criteria.
+func (s *DatadogSource) filterRules(ruleset *Ruleset, selection *QueryInspectorParameters) ([]model.QueryMetadata, error) {
+	var out []model.QueryMetadata
+	for _, rule := range ruleset.Rules {
+		if !rule.IsPublished {
+			continue
+		}
+		if rule.IsTesting && !selection.ExperimentalQueries {
+			continue
+		}
+		if !s.isWantedPlatform(rule.Platform) {
+			continue
+		}
+		if !s.isWantedCloudProvider(rule.Provider) {
+			continue
+		}
+		if len(selection.IncludeQueries.ByIDs) > 0 {
+			if !isInCaseInsensitiveList(rule.ID, selection.IncludeQueries.ByIDs) {
+				continue
+			}
+		} else {
+			if isInCaseInsensitiveList(rule.ID, selection.ExcludeQueries.ByIDs) ||
+				isInCaseInsensitiveList(rule.Category, selection.ExcludeQueries.ByCategories) ||
+				isInCaseInsensitiveList(rule.Severity, selection.ExcludeQueries.BySeverities) ||
+				(!selection.BomQueries && strings.EqualFold(rule.Severity, model.SeverityTrace)) {
+				continue
+			}
+		}
+		converted := convertRule(rule)
+		out = append(out, converted)
+	}
+	return out, nil
+}
+
+// isWantedPlatform checks if the given platform is in the list of wanted platforms.
+func (s *DatadogSource) isWantedPlatform(platform string) bool {
+	if strings.EqualFold(platform, "Common") {
+		return true
+	}
+	if s.wantedPlatforms[0] == "" {
+		return true
+	}
+	return isInCaseInsensitiveList(platform, s.wantedPlatforms)
+}
+
+// isWantedCloudProvider checks if the given provider is in the list of wanted providers.
+func (s *DatadogSource) isWantedCloudProvider(provider *string) bool {
+	if s.wantedCloudProviders[0] == "" {
+		return true
+	}
+	if provider == nil {
+		return false
+	}
+	if strings.EqualFold(*provider, "Common") {
+		return true
+	}
+	return isInCaseInsensitiveList(*provider, s.wantedCloudProviders)
+}
+
+// isInCaseInsensitiveList checks if the given item is in the given list, doing a case-insensitive search.
+func isInCaseInsensitiveList(id string, list []string) bool {
+	for _, item := range list {
+		if strings.EqualFold(id, item) {
+			return true
+		}
+	}
+	return false
+}
+
+// convertRule converts a Datadog api [Rule] to a [model.QueryMetadata]
+func convertRule(rule *Rule) model.QueryMetadata {
+	out := model.QueryMetadata{
+		InputData: "{}",
+		Query:     rule.Name,
+		Content:   string(rule.RegoQuery),
+		Metadata: map[string]any{
+			"id":              rule.ID,
+			"queryName":       rule.ShortDescription,
+			"descriptionText": rule.Description,
+			"platform":        rule.Platform,
+			"severity":        rule.Severity,
+			"category":        rule.Category,
+		},
+		Platform:     rule.Platform,
+		Aggregation:  1,
+		Experimental: rule.IsTesting,
+	}
+	if rule.DocumentationUrl != nil {
+		out.Metadata["descriptionUrl"] = *rule.DocumentationUrl
+	}
+	if rule.DescriptionId != nil {
+		out.Metadata["descriptionId"] = *rule.DescriptionId
+	}
+	if rule.Provider != nil {
+		out.Metadata["cloudProvider"] = *rule.Provider
+	}
+	if rule.Cwe != nil {
+		out.Metadata["cwe"] = *rule.Cwe
+		out.CWE = *rule.Cwe
+	}
+	if rule.Aggregation != nil {
+		out.Metadata["aggregation"] = *rule.Aggregation
+		out.Aggregation = *rule.Aggregation
+	}
+	if len(rule.Overrides) > 0 {
+		overrides := map[string]map[string]any{}
+		for _, ovr := range rule.Overrides {
+			key := ovr.Key
+			override := map[string]any{}
+			if ovr.ID != nil {
+				override["id"] = *ovr.ID
+			}
+			if ovr.ShortDescription != nil {
+				override["queryName"] = *ovr.ShortDescription
+			}
+			if ovr.Description != nil {
+				override["descriptionText"] = *ovr.Description
+			}
+			if ovr.DescriptionId != nil {
+				override["descriptionId"] = *ovr.DescriptionId
+			}
+			if ovr.DocumentationUrl != nil {
+				override["descriptionUrl"] = *ovr.DocumentationUrl
+			}
+			if ovr.Platform != nil {
+				override["platform"] = *ovr.Platform
+			}
+			if ovr.Severity != nil {
+				override["severity"] = *ovr.Severity
+			}
+			if ovr.Category != nil {
+				override["category"] = *ovr.Category
+			}
+			if ovr.Provider != nil {
+				override["cloudProvider"] = *ovr.Provider
+			}
+			if ovr.Cwe != nil {
+				override["cwe"] = *ovr.Cwe
+			}
+			overrides[key] = override
+		}
+		out.Metadata["overrides"] = overrides
+	}
+	return out
+}
+
+// sendRequest sends a Datadog API request
+func (s *DatadogSource) sendRequest(ctx context.Context, method string, path string, requestBody io.Reader) (*http.Response, error) {
+	url := fmt.Sprintf("https://%s/api/v2/static-analysis/iac/%s", s.hostname, path)
+	req, err := http.NewRequestWithContext(ctx, method, url, requestBody)
+	if err != nil {
+		return nil, fmt.Errorf("error building %s %s request: %w", method, url, err)
+	}
+	req.Header.Add("content-type", "application/json")
+	if s.apiKey != "" {
+		req.Header.Add("dd-api-key", s.apiKey)
+	}
+	if s.appKey != "" {
+		req.Header.Add("dd-application-key", s.appKey)
+	}
+	return s.httpClient.Do(req)
+}
+
+var _ QueriesSource = (*DatadogSource)(nil)
+
+// getDdEnvvar returns the value of the given Datadog environment variable.
+// The DD_ prefix is checked first, then the DATADOG_ prefix.
+// Returns an empty string if neither environment variable exists.
+func getDdEnvvar(name string) string {
+	if v, ok := os.LookupEnv("DD_" + name); ok {
+		return v
+	} else if v, ok = os.LookupEnv("DATADOG_" + name); ok {
+		return v
+	}
+	return ""
+}
+
+// Ruleset defines a collection of rules.
+type Ruleset struct {
+	ID               string  `jsonapi:"primary,iac_ruleset" json:"id"`
+	Name             string  `jsonapi:"attribute" json:"name"`
+	ShortDescription string  `jsonapi:"attribute" json:"short_description"`
+	Description      string  `jsonapi:"attribute" json:"description"`
+	Rules            []*Rule `jsonapi:"attribute" json:"rules"`
+}
+
+// Rule defines the structure of a rule that's stored in Datadog.
+type Rule struct {
+	ID               string         `jsonapi:"primary,iac_rule" json:"id"`
+	Name             string         `jsonapi:"attribute" json:"name"`
+	LegacyId         *string        `jsonapi:"attribute" json:"legacy_id,omitempty"`
+	ShortDescription string         `jsonapi:"attribute" json:"short_description"`
+	Description      string         `jsonapi:"attribute" json:"description"`
+	DescriptionId    *string        `jsonapi:"attribute" json:"description_id,omitempty"`
+	Platform         string         `jsonapi:"attribute" json:"platform"`
+	Type             string         `jsonapi:"attribute" json:"type"`
+	RegoQuery        []byte         `jsonapi:"attribute" json:"rego_query"`
+	Severity         string         `jsonapi:"attribute" json:"severity"`
+	Category         string         `jsonapi:"attribute" json:"category"`
+	Provider         *string        `jsonapi:"attribute" json:"provider,omitempty"`
+	Cwe              *string        `jsonapi:"attribute" json:"cwe,omitempty"`
+	DocumentationUrl *string        `jsonapi:"attribute" json:"documentation_url,omitempty"`
+	Aggregation      *int           `jsonapi:"attribute" json:"aggregation,omitempty"`
+	Overrides        []RuleOverride `jsonapi:"attribute" json:"overrides,omitempty"`
+	IsTesting        bool           `jsonapi:"attribute" json:"is_testing"`
+	IsPublished      bool           `jsonapi:"attribute" json:"is_published"`
+}
+
+type RuleOverride struct {
+	Key              string  `jsonapi:"primary,iac_rule_override" json:"key"`
+	ID               *string `jsonapi:"attribute" json:"id,omitempty"`
+	ShortDescription *string `jsonapi:"attribute" json:"short_description,omitempty"`
+	Description      *string `jsonapi:"attribute" json:"description,omitempty"`
+	DescriptionId    *string `jsonapi:"attribute" json:"description_id,omitempty"`
+	Platform         *string `jsonapi:"attribute" json:"platform,omitempty"`
+	Severity         *string `jsonapi:"attribute" json:"severity,omitempty"`
+	Category         *string `jsonapi:"attribute" json:"category,omitempty"`
+	Provider         *string `jsonapi:"attribute" json:"provider,omitempty"`
+	Cwe              *string `jsonapi:"attribute" json:"cwe,omitempty"`
+	DocumentationUrl *string `jsonapi:"attribute" json:"documentation_url,omitempty"`
+}

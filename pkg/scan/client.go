@@ -58,6 +58,7 @@ type Parameters struct {
 	PreAnalysisExcludePaths     []string
 	SCIInfo                     model.SCIInfo
 	FlagEvaluator               featureflags.FlagEvaluator
+	DownloadQueriesFromDatadog  bool
 }
 
 // Client represents a scan client

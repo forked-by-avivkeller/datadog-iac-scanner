@@ -60,13 +60,11 @@ func (c *Client) initScan(ctx context.Context) (*executeScanParameters, error) {
 
 	paramsPlatforms := c.ScanParams.Platform
 	useDifferentPlatformQueries(&paramsPlatforms)
-	querySource := source.NewFilesystemSource(
-		ctx,
-		c.ScanParams.QueriesPath,
-		paramsPlatforms,
-		c.ScanParams.CloudProvider,
-		c.ScanParams.LibrariesPath,
-		c.ScanParams.ExperimentalQueries)
+	querySource, err := c.createQuerySource(ctx, paramsPlatforms)
+	if err != nil {
+		contextLogger.Err(err).Msgf("Failed to create query source")
+		return nil, err
+	}
 
 	queryFilter := c.createQueryFilter()
 
@@ -97,7 +95,8 @@ func (c *Client) initScan(ctx context.Context) (*executeScanParameters, error) {
 		extractedPaths.Path,
 		c.Tracker,
 		c.Storage,
-		querySource,
+		paramsPlatforms,
+		c.ScanParams.CloudProvider,
 		c.FlagEvaluator,
 	)
 	if err != nil {
@@ -110,6 +109,24 @@ func (c *Client) initScan(ctx context.Context) (*executeScanParameters, error) {
 		inspector:      inspector,
 		extractedPaths: extractedPaths,
 	}, nil
+}
+
+func (c *Client) createQuerySource(ctx context.Context, paramsPlatforms []string) (source.QueriesSource, error) {
+	fss := source.NewFilesystemSource(
+		ctx,
+		c.ScanParams.QueriesPath,
+		paramsPlatforms,
+		c.ScanParams.CloudProvider,
+		c.ScanParams.LibrariesPath,
+		c.ScanParams.ExperimentalQueries)
+	if !c.ScanParams.DownloadQueriesFromDatadog {
+		return fss, nil
+	}
+	return source.NewDatadogSource(
+		source.WithWantedPlatforms(paramsPlatforms),
+		source.WithWantedCloudProviders(c.ScanParams.CloudProvider),
+		source.WithLibrarySource(fss),
+	)
 }
 
 func (c *Client) executeScan(ctx context.Context) (*Results, error) {
@@ -218,7 +235,9 @@ func (c *Client) createService(
 	paths []string,
 	t kics.Tracker,
 	store kics.Storage,
-	querySource *source.FilesystemSource, flagEvaluator featureflags.FlagEvaluator) ([]*kics.Service, error) {
+	types []string,
+	cloudProviders []string,
+	flagEvaluator featureflags.FlagEvaluator) ([]*kics.Service, error) {
 	filesSource, err := c.getFileSystemSourceProvider(ctx, paths)
 	if err != nil {
 		return nil, err
@@ -233,7 +252,7 @@ func (c *Client) createService(
 		Add(&buildahParser.Parser{}).
 		Add(&ansibleConfigParser.Parser{}).
 		Add(&ansibleHostsParser.Parser{}).
-		Build(querySource.Types, querySource.CloudProviders)
+		Build(types, cloudProviders)
 	if err != nil {
 		return nil, err
 	}
