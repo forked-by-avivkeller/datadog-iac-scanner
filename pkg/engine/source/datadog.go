@@ -163,7 +163,7 @@ func (s *DatadogSource) getDefaultRuleset(ctx context.Context) (*Ruleset, error)
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer response.Body.Close() // nolint:errcheck
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("the Datadog API returned status %d", response.StatusCode)
 	}
@@ -173,7 +173,7 @@ func (s *DatadogSource) getDefaultRuleset(ctx context.Context) (*Ruleset, error)
 	if err != nil {
 		return nil, err
 	}
-	if err = jsonapi.Unmarshal(bytes, &ruleset); err != nil {
+	if err := jsonapi.Unmarshal(bytes, &ruleset); err != nil {
 		return nil, err
 	}
 
@@ -249,6 +249,7 @@ func isInCaseInsensitiveList(id string, list []string) bool {
 	return false
 }
 
+// nolint:gocyclo
 // convertRule converts a Datadog api [Rule] to a [model.QueryMetadata]
 func convertRule(rule *Rule) model.QueryMetadata {
 	out := model.QueryMetadata{
@@ -327,7 +328,7 @@ func convertRule(rule *Rule) model.QueryMetadata {
 }
 
 // sendRequest sends a Datadog API request
-func (s *DatadogSource) sendRequest(ctx context.Context, method string, path string, requestBody io.Reader) (*http.Response, error) {
+func (s *DatadogSource) sendRequest(ctx context.Context, method, path string, requestBody io.Reader) (*http.Response, error) {
 	url := fmt.Sprintf("https://%s/api/v2/static-analysis/iac/%s", s.hostname, path)
 	req, err := http.NewRequestWithContext(ctx, method, url, requestBody)
 	if err != nil {
