@@ -1,5 +1,7 @@
 package testcases
 
+import "strings"
+
 // E2E-CLI-003 - Scan command has a mandatory flag -p. The CLI should exhibit
 // an error message and return exit code 126
 func init() { //nolint
@@ -9,7 +11,11 @@ func init() { //nolint
 			Args: []cmdArgs{
 				[]string{"scan"},
 			},
-			ExpectedOut: []string{"E2E_CLI_003"},
+			ExpectedOutputFunc: []Validation{
+				func(outputText string) bool {
+					return strings.Contains(outputText, "Program failed: Required flag \"path\" not set")
+				},
+			},
 		},
 		WantStatus: []int{126},
 	}

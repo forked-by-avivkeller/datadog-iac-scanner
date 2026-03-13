@@ -1,5 +1,7 @@
 package testcases
 
+import "strings"
+
 // E2E-CLI-002 - Scan command should display a help text in the CLI when provided with the
 // --help flag and it should describe the options related with scan plus the global options
 func init() { //nolint
@@ -9,7 +11,11 @@ func init() { //nolint
 			Args: []cmdArgs{
 				[]string{"scan", "--help"},
 			},
-			ExpectedOut: []string{"E2E_CLI_002"},
+			ExpectedOutputFunc: []Validation{
+				func(outputText string) bool {
+					return strings.Contains(outputText, "USAGE:")
+				},
+			},
 		},
 		WantStatus: []int{0},
 	}

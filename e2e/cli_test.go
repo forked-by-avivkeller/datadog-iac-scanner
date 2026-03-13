@@ -102,6 +102,15 @@ func Test_E2E_CLI(t *testing.T) {
 						utils.CheckLine(t, formattedWant[idx], out.Output[idx], idx+1)
 					}
 				}
+
+				if tt.Args.ExpectedOutputFunc != nil && arg < len(tt.Args.ExpectedOutputFunc) {
+					fullString := strings.Join(out.Output, "\n")
+					validation := tt.Args.ExpectedOutputFunc[arg](fullString)
+					if !validation {
+						printTestDetails(out.Output)
+					}
+					require.True(t, validation, "Scanner CLI output doesn't match the function validation.")
+				}
 			})
 		}
 	}
