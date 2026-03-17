@@ -28,13 +28,10 @@ var listQueriesAction = &cli.Command{
 }
 
 func listQueries(ctx context.Context, c *cli.Command) error {
-	querySource := source.NewFilesystemSource(
-		ctx,
-		[]string{"./assets/queries"},
-		GetSupportedPlatforms(),
-		[]string{""},
-		"./assets/libraries",
-		false)
+	querySource, err := getQuerySource(ctx, c)
+	if err != nil {
+		return err
+	}
 
 	queryFilter := source.QueryInspectorParameters{
 		FlagEvaluator: featureflags.NewLocalEvaluator(),
@@ -55,4 +52,20 @@ func listQueries(ctx context.Context, c *cli.Command) error {
 		fmt.Println()
 	}
 	return nil
+}
+
+func getQuerySource(ctx context.Context, c *cli.Command) (source.QueriesSource, error) {
+	if !c.Bool("x-downloadqueriesfromdatadog") {
+		fss := source.NewFilesystemSource(
+			ctx,
+			[]string{"./assets/queries"},
+			GetSupportedPlatforms(),
+			[]string{""},
+			"./assets/libraries",
+			false)
+		return fss, nil
+	}
+	return source.NewDatadogSource(
+		source.WithWantedPlatforms(GetSupportedPlatforms()),
+	)
 }
